@@ -504,13 +504,6 @@ export default function Workspace() {
             <ArrowUpRight size={13} className="nav-arrow" />
           </button>
           <button
-            className="settings-open"
-            onClick={() => setModal("settings")}
-          >
-            <Gear size={16} />
-            <span className="nav-label">Settings</span>
-          </button>
-          <button
             className="collapse-toggle"
             aria-label={compact ? "Expand sidebar" : "Collapse sidebar"}
             title={compact ? "Expand sidebar" : "Collapse sidebar"}
@@ -523,6 +516,13 @@ export default function Workspace() {
           >
             <PanelLeft size={16} />
             <span className="nav-label">Collapse</span>
+          </button>
+          <button
+            className="settings-open"
+            onClick={() => setModal("settings")}
+          >
+            <Gear size={16} />
+            <span className="nav-label">Settings</span>
           </button>
         </div>
       </aside>
