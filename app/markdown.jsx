@@ -2,6 +2,7 @@
 import { useState, Children, isValidElement } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkEmoji from "remark-emoji";
 import { Check, Copy, ExternalLink } from "lucide-react";
 
 // Only these link targets are clickable; anything else (javascript:, data:, ...) is shown as plain text.
@@ -112,7 +113,10 @@ const components = {
 export default function Markdown({ children }) {
   return (
     <div className="prose">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkEmoji]}
+        components={components}
+      >
         {children || ""}
       </ReactMarkdown>
     </div>

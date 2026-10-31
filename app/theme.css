@@ -959,3 +959,9 @@ a.subtle-button {
 .mail-body .delivery {
   font-size: 12px;
 }
+.mail-body .prose > :first-child {
+  margin-top: 0;
+}
+.mail-body {
+  padding-top: 4px;
+}

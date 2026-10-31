@@ -16,6 +16,7 @@ COPY --from=build --chown=node:node /app/package.json /app/next.config.mjs ./
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/.next ./.next
 COPY --from=build --chown=node:node /app/lib ./lib
+COPY --from=build --chown=node:node /app/CHANGELOG.md ./CHANGELOG.md
 COPY --from=build --chown=node:node /app/scripts ./scripts
 COPY --chown=node:node deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh && mkdir /data /backups && chown node:node /data /backups

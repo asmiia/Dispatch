@@ -26,6 +26,7 @@ import {
   exportAccount,
   exportTeam,
 } from "../../../lib/deletion.mjs";
+import { checkUpdate, applyUpdate, status } from "../../../lib/updates.mjs";
 import { backupStatus, runBackup } from "../../../lib/backup-scheduler.mjs";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -102,6 +103,28 @@ export async function GET(request, { params }) {
           "Cache-Control": "private, no-store",
         },
       });
+    }
+    if (path.join("/") === "settings/instance") {
+      acc.siteAdmin(actor);
+      return Response.json({
+        version: status().version,
+        node: process.version,
+        origin: process.env.DISPATCH_ORIGIN || null,
+        mail: mailEnabled(),
+        oauth: enabledProviders(),
+        upload_limit: MAX_FILE,
+        audit_retention_days:
+          process.env.DISPATCH_AUDIT_RETENTION_DAYS || "365",
+        trust_proxy: process.env.DISPATCH_TRUST_PROXY === "true",
+        secure_cookies: process.env.DISPATCH_COOKIE_SECURE === "true",
+        log_level: process.env.DISPATCH_LOG_LEVEL || "info",
+        auto_update: process.env.DISPATCH_AUTO_UPDATE === "true",
+        update_command: !!process.env.DISPATCH_UPDATE_COMMAND,
+      });
+    }
+    if (path.join("/") === "settings/update") {
+      acc.siteAdmin(actor);
+      return Response.json(await checkUpdate(url.searchParams.has("force")));
     }
     if (path.join("/") === "settings/backups") {
       acc.siteAdmin(actor);
@@ -319,6 +342,13 @@ export async function POST(request, { params }) {
             "dispatch_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0",
         },
       });
+    }
+    if (route === "settings/update/apply") {
+      acc.siteAdmin(actor);
+      sec.rate("update-apply", 3, 3600000);
+      const result = applyUpdate();
+      sec.log(actor, null, "instance.update", result.latest?.tag || "");
+      return Response.json(result);
     }
     if (route === "settings/backups/run") {
       acc.siteAdmin(actor);

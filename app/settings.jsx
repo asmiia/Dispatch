@@ -3,6 +3,9 @@ import Coordination from "./coordination";
 import Security from "./security";
 import Activity from "./activity";
 import Backups from "./backups";
+import Updates from "./updates";
+import Appearance from "./appearance";
+import InstanceSettings from "./instance-settings";
 import Members from "./members";
 import Account from "./account";
 import Overview from "./overview";
@@ -31,6 +34,9 @@ import {
   Link2,
   DatabaseBackup,
   BarChart3,
+  Download,
+  Palette,
+  SlidersHorizontal,
 } from "lucide-react";
 async function api(path, body) {
   const r = await fetch("/api/" + path, {
@@ -189,6 +195,7 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                 "Account",
                 [
                   ["account", UserRound, "Your account"],
+                  ["appearance", Palette, "Appearance"],
                   ["security", ShieldCheck, "Security"],
                 ],
               ],
@@ -211,6 +218,8 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                         ["instance", UsersRound, "Users"],
                         ["activity", ActivityIcon, "Activity"],
                         ["backups", DatabaseBackup, "Backups"],
+                        ["updates", Download, "Updates"],
+                        ["instance-settings", SlidersHorizontal, "Settings"],
                       ],
                     ],
                   ]
@@ -272,8 +281,11 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                   />
                 )}
                 {tab === "security" && <Security api={api} />}
+                {tab === "appearance" && <Appearance />}
+                {tab === "instance-settings" && <InstanceSettings api={api} />}
                 {tab === "activity" && <Activity api={api} />}
                 {tab === "backups" && <Backups api={api} />}
+                {tab === "updates" && <Updates api={api} />}
                 {tab === "team" && (
                   <TeamSettings
                     data={data}

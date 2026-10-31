@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { Camera, LogOut, ShieldCheck, Trash2 } from "lucide-react";
 import UserAvatar from "./user-avatar";
 import PhotoEditor from "./photo-editor";
-import { ThemeSwitch } from "./theme-toggle";
 import { AccountData } from "./data";
 
 // Your profile: a header with your photo, then cards for name, look, password, session and your data.
@@ -132,12 +131,6 @@ export default function Account({ data, api, run, busy, setError, goTo }) {
         </section>
 
         <section className="card">
-          <h4>Appearance</h4>
-          <p className="muted">Choose light, dark, or follow your device.</p>
-          <ThemeSwitch />
-        </section>
-
-        <section className="card">
           <h4>Password</h4>
           <form
             onSubmit={async (e) => {
@@ -185,7 +178,7 @@ export default function Account({ data, api, run, busy, setError, goTo }) {
           </form>
         </section>
 
-        <section className="card">
+        <section className="card wide">
           <h4>Session</h4>
           <p className="muted">
             See where you're signed in, or end this session.

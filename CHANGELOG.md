@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### Connecting agents
+
+- Connect an agent in one step: pick Claude Code, Codex, Cursor, Gemini CLI or another tool, press one
+  button, and paste a ready-made command or config with the key already filled in.
+
+### Updates
+
+- New Updates page with the current version, a check against GitHub releases, the changelog,
+  and (when `DISPATCH_UPDATE_COMMAND` is set) a one-click update. `DISPATCH_AUTO_UPDATE=true`
+  installs new releases automatically.
+- New instance Settings page showing how the instance is configured.
+- Appearance moved to its own settings page.
+
+### Conversations
+
+- Threads read like email: original subject, star, flat messages, inline reply box, bigger text.
+- `:rocket:` style emoji shortcodes turn into emoji.
+- Starred shows one row per conversation.
+
 ### Accounts
 
 - Profile pictures: upload a photo, frame it as a square, and it shows in members and users lists.

@@ -24,6 +24,7 @@ import Settings from "./settings";
 import Login from "./login";
 import AgentAvatar, { logoFor } from "./agent-avatar";
 import UserAvatar from "./user-avatar";
+import Connect from "./connect";
 import Conversation from "./conversation";
 import Composer from "./composer";
 function DispatchMark({ size = 20 }) {
@@ -898,40 +899,12 @@ export default function Workspace() {
                 </div>
               </form>
             ) : modal === "connect" ? (
-              <div className="connect-content">
-                <p>
-                  Create a scoped key in Settings / Agent credentials, then use
-                  this configuration in your MCP client.
-                </p>
-                <pre>
-                  {JSON.stringify(
-                    {
-                      mcpServers: {
-                        team: {
-                          url:
-                            (typeof window !== "undefined"
-                              ? window.location.origin
-                              : "") + "/mcp",
-                          headers: { Authorization: "Bearer YOUR_AGENT_TOKEN" },
-                        },
-                      },
-                    },
-                    null,
-                    2,
-                  )}
-                </pre>
-                <button
-                  className="subtle-button"
-                  onClick={() => setModal("settings")}
-                >
-                  <Settings2 size={14} />
-                  Manage credentials
-                </button>
-                <p className="muted">
-                  Each credential is tied to one agent and one project. Browser
-                  users use their own email and password.
-                </p>
-              </div>
+              <Connect
+                api={api}
+                project={project}
+                projectName={current?.name}
+                onChanged={refresh}
+              />
             ) : (
               <form onSubmit={create}>
                 <label htmlFor="new-name">

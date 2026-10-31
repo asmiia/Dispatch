@@ -1,41 +1,40 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus } from "lucide-react";
+import { ImagePlus, Minus, Plus, X } from "lucide-react";
 
-const PREVIEW = 240,
+const PREVIEW = 360,
   OUTPUT = 512;
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
-// Choose a photo and frame it as a square: zoom and move it, then save a 512 px JPEG.
+// A crop dialog in the style of GitHub and Discord: drag the photo, zoom with the slider or wheel, save a square.
 export default function PhotoEditor({ onSave, onCancel, busy }) {
   const [image, setImage] = useState(null),
     [zoom, setZoom] = useState(1),
-    [x, setX] = useState(0),
-    [y, setY] = useState(0),
+    [pos, setPos] = useState({ x: 0, y: 0 }), // image offset as a fraction of the frame, 0 = centered
     [error, setError] = useState(""),
-    canvas = useRef(null);
+    canvas = useRef(null),
+    drag = useRef(null);
 
-  // Draws the image "cover"-fitted into a square, then scaled and shifted by the sliders.
+  // Cover-fits the image in a square, scaled by zoom and shifted by pos, never leaving gaps.
   function draw(target, size) {
     const ctx = target.getContext("2d"),
-      cover = size / Math.min(image.width, image.height),
-      scale = cover * zoom,
+      scale = (size / Math.min(image.width, image.height)) * zoom,
       w = image.width * scale,
       h = image.height * scale,
-      spareX = Math.max(0, w - size),
-      spareY = Math.max(0, h - size);
+      left = clamp((size - w) / 2 + pos.x * size, size - w, 0),
+      top = clamp((size - h) / 2 + pos.y * size, size - h, 0);
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, size, size);
-    ctx.drawImage(
-      image,
-      -spareX / 2 - (x / 100) * (spareX / 2),
-      -spareY / 2 - (y / 100) * (spareY / 2),
-      w,
-      h,
-    );
+    ctx.drawImage(image, left, top, w, h);
   }
   useEffect(() => {
     if (image && canvas.current) draw(canvas.current, PREVIEW);
-  }, [image, zoom, x, y]);
+  }, [image, zoom, pos]);
+  useEffect(() => {
+    const esc = (e) => e.key === "Escape" && onCancel();
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, []);
 
   function choose(e) {
     const file = e.target.files?.[0];
@@ -51,13 +50,25 @@ export default function PhotoEditor({ onSave, onCancel, busy }) {
       img.onload = () => {
         setImage(img);
         setZoom(1);
-        setX(0);
-        setY(0);
+        setPos({ x: 0, y: 0 });
       };
       img.onerror = () => setError("That file could not be read as an image.");
       img.src = String(reader.result);
     };
     reader.readAsDataURL(file);
+  }
+  function down(e) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { x: e.clientX, y: e.clientY, pos };
+  }
+  function move(e) {
+    const d = drag.current;
+    if (!d) return;
+    const box = e.currentTarget.getBoundingClientRect().width;
+    setPos({
+      x: d.pos.x + (e.clientX - d.x) / box,
+      y: d.pos.y + (e.clientY - d.y) / box,
+    });
   }
   function save() {
     const out = document.createElement("canvas");
@@ -75,96 +86,104 @@ export default function PhotoEditor({ onSave, onCancel, busy }) {
   }
 
   return (
-    <div className="photo-editor">
-      {!image ? (
-        <label className="photo-drop">
-          <ImagePlus size={22} />
-          <strong>Choose a photo</strong>
-          <span>PNG, JPEG, WebP or GIF. You'll crop it to a square next.</span>
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            onChange={choose}
-          />
-        </label>
-      ) : (
-        <div className="photo-frame">
-          <canvas
-            ref={canvas}
-            width={PREVIEW}
-            height={PREVIEW}
-            className="photo-canvas"
-            aria-label="Photo preview"
-          />
-          <div className="photo-controls">
-            <label>
-              Zoom
+    <div
+      className="photo-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Edit profile photo"
+      onMouseDown={(e) => e.target === e.currentTarget && onCancel()}
+    >
+      <div className="photo-dialog">
+        <div className="photo-head">
+          <h3>Edit profile photo</h3>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Close"
+            onClick={onCancel}
+          >
+            <X size={16} />
+          </button>
+        </div>
+        {!image ? (
+          <label className="photo-drop">
+            <ImagePlus size={26} />
+            <strong>Upload a photo</strong>
+            <span>
+              PNG, JPEG, WebP or GIF. You'll crop it to a square next.
+            </span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={choose}
+            />
+          </label>
+        ) : (
+          <>
+            <div
+              className="photo-stage"
+              onPointerDown={down}
+              onPointerMove={move}
+              onPointerUp={() => (drag.current = null)}
+              onWheel={(e) => setZoom((z) => clamp(z - e.deltaY / 500, 1, 4))}
+            >
+              <canvas
+                ref={canvas}
+                width={PREVIEW}
+                height={PREVIEW}
+                aria-label="Photo preview"
+              />
+              <i className="photo-grid" />
+            </div>
+            <p className="photo-hint">
+              Drag to reposition. Scroll or use the slider to zoom.
+            </p>
+            <div className="photo-zoom">
+              <Minus size={14} />
               <input
                 type="range"
+                aria-label="Zoom"
                 min="1"
-                max="3"
+                max="4"
                 step="0.01"
                 value={zoom}
                 onChange={(e) => setZoom(Number(e.target.value))}
               />
-            </label>
-            <label>
-              Left / right
-              <input
-                type="range"
-                min="-100"
-                max="100"
-                value={x}
-                onChange={(e) => setX(Number(e.target.value))}
-              />
-            </label>
-            <label>
-              Up / down
-              <input
-                type="range"
-                min="-100"
-                max="100"
-                value={y}
-                onChange={(e) => setY(Number(e.target.value))}
-              />
-            </label>
-            <div className="photo-actions">
-              <button
-                type="button"
-                className="primary"
-                disabled={busy}
-                onClick={save}
-              >
-                Save photo
-              </button>
-              <button
-                type="button"
-                className="subtle-button"
-                onClick={() => setImage(null)}
-              >
-                Choose another
-              </button>
-              <button
-                type="button"
-                className="subtle-button"
-                onClick={onCancel}
-              >
-                Cancel
-              </button>
+              <Plus size={14} />
             </div>
+          </>
+        )}
+        {error && (
+          <div className="error" role="alert">
+            {error}
           </div>
+        )}
+        <div className="photo-actions">
+          {image && (
+            <button
+              type="button"
+              className="subtle-button"
+              onClick={() => setImage(null)}
+            >
+              Choose another
+            </button>
+          )}
+          <span />
+          <button type="button" className="subtle-button" onClick={onCancel}>
+            Cancel
+          </button>
+          {image && (
+            <button
+              type="button"
+              className="primary"
+              disabled={busy}
+              onClick={save}
+            >
+              Save photo
+            </button>
+          )}
         </div>
-      )}
-      {!image && (
-        <button type="button" className="subtle-button" onClick={onCancel}>
-          Cancel
-        </button>
-      )}
-      {error && (
-        <div className="error" role="alert">
-          {error}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
