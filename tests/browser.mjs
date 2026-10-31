@@ -104,7 +104,7 @@ try {
   });
   await page.locator(".upload-chips").getByText("preview-notes.txt").waitFor();
   await page.getByRole("button", { name: "Send message", exact: true }).click();
-  await page.locator(".thread-heading h1").waitFor();
+  await page.locator(".chat-head h1").waitFor();
   const file = page.locator(".file-card");
   await file.waitFor();
   assert.equal(await file.locator("strong").textContent(), "preview-notes.txt");

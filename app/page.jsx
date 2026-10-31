@@ -6,6 +6,7 @@ import {
   Inbox,
   Send,
   Paperclip,
+  PanelLeft,
   Plus,
   Search,
   ChevronDown,
@@ -108,7 +109,8 @@ export default function Workspace() {
     [project, setProject] = useState(""),
     [projectTeam, setProjectTeam] = useState(""),
     [agents, setAgents] = useState([]),
-    [agent, setAgent] = useState("");
+    [agent, setAgent] = useState(""),
+    [compact, setCompact] = useState(false);
   const [messages, setMessages] = useState([]),
     [selected, setSelected] = useState(""),
     [thread, setThread] = useState([]),
@@ -173,6 +175,11 @@ export default function Workspace() {
       else setError(e.message);
     }
   }, [project]);
+  useEffect(() => {
+    try {
+      setCompact(localStorage.getItem("dispatch-compact") === "1");
+    } catch {}
+  }, []);
   useEffect(() => {
     setSelected("");
     setThread([]);
@@ -392,12 +399,25 @@ export default function Workspace() {
   if (!authenticated) return <Login onAuthed={refreshProjects} />;
   return (
     <div className="workspace">
-      <aside className="sidebar">
+      <aside className={"sidebar" + (compact ? " compact" : "")}>
         <div className="brand">
           <span className="brandmark">
             <DispatchMark size={18} />
           </span>
-          Dispatch
+          <span className="brand-name">Dispatch</span>
+          <button
+            className="icon-button collapse-toggle"
+            aria-label={compact ? "Expand sidebar" : "Collapse sidebar"}
+            title={compact ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => {
+              setCompact(!compact);
+              try {
+                localStorage.setItem("dispatch-compact", compact ? "" : "1");
+              } catch {}
+            }}
+          >
+            <PanelLeft size={16} />
+          </button>
         </div>
         <div className="project-switch">
           <span className="project-avatar">{current?.name?.[0] || "T"}</span>
@@ -442,7 +462,7 @@ export default function Workspace() {
               }}
             >
               <Icon size={16} />
-              {label}
+              <span className="nav-label">{label}</span>
               {id === "inbox" && (
                 <span className="count">
                   {
@@ -486,44 +506,6 @@ export default function Workspace() {
               <span className="quiet-count">{p.message_count || 0}</span>
             </button>
           ))}
-        </div>
-        <div className="section-label section-row">
-          AGENTS
-          <button
-            aria-label="Register agent"
-            disabled={!project || !canWrite}
-            onClick={() => {
-              setNewName("");
-              setModal("agent");
-            }}
-          >
-            <Plus size={14} />
-          </button>
-        </div>
-        <div className="agent-list">
-          {agents.map((a) => (
-            <button
-              key={a.id}
-              className={agent === a.name ? "current" : ""}
-              onClick={() => setAgent(a.name)}
-            >
-              {logoFor(a.program, a.model) ? (
-                <AgentAvatar
-                  className="avatar tiny"
-                  name={a.name}
-                  program={a.program}
-                  model={a.model}
-                />
-              ) : (
-                <span className="presence" />
-              )}
-              {a.name}
-              <span className="agent-program">{a.program}</span>
-            </button>
-          ))}
-          {!agents.length && (
-            <p className="sidebar-hint">Register an agent to get started.</p>
-          )}
         </div>
         <div className="sidebar-bottom">
           <button onClick={() => setModal("connect")}>
@@ -599,7 +581,28 @@ export default function Workspace() {
               <kbd>Ctrl K</kbd>
             </div>
             <div className="list-meta">
-              <span>{agent || "All agents"}</span>
+              <Select
+                aria-label="Viewing as"
+                className="agent-pick"
+                value={agent || "__all"}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "__new") {
+                    setNewName("");
+                    setModal("agent");
+                  } else setAgent(v === "__all" ? "" : v);
+                }}
+              >
+                <option value="__all">All agents</option>
+                {agents.map((a) => (
+                  <option key={a.id} value={a.name}>
+                    {a.name}
+                  </option>
+                ))}
+                {canWrite && project && (
+                  <option value="__new">+ Register agent</option>
+                )}
+              </Select>
               <span>
                 Most recent <ChevronDown size={11} />
               </span>
@@ -708,6 +711,7 @@ export default function Workspace() {
                   onStar={() => toggleStar(chosen.thread_id)}
                   onReply={compose}
                   onQuickReply={quickReply}
+                  onConnect={() => setModal("connect")}
                   onBack={() => {
                     setSelected("");
                     setThread([]);

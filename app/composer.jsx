@@ -40,7 +40,7 @@ function prefix(el, value, set, make) {
 }
 
 // A message editor with a formatting bar and a live preview. Plain Markdown underneath.
-export default function Composer({ value, onChange, placeholder }) {
+export default function Composer({ value, onChange, placeholder, onSubmit }) {
   const ref = useRef(null),
     [preview, setPreview] = useState(false);
   const tools = [
@@ -68,6 +68,10 @@ export default function Composer({ value, onChange, placeholder }) {
     ["Quote", Quote, (el) => prefix(el, value, onChange, () => "> ")],
   ];
   function keys(e) {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && onSubmit) {
+      e.preventDefault();
+      return onSubmit();
+    }
     if (!(e.ctrlKey || e.metaKey)) return;
     const el = ref.current,
       map = { b: 0, i: 1, k: 6 };

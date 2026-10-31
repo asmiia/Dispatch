@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -9,6 +9,8 @@ import {
   Download,
   FileText,
   Maximize2,
+  PanelRight,
+  Plus,
   Send,
   Star,
   Trash2,
@@ -54,6 +56,11 @@ const snippet = (md) =>
     .trim()
     .slice(0, 160);
 const isImage = (name) => /\.(png|jpe?g|gif|webp|avif)$/i.test(name);
+const clock = (iso) =>
+  new Date(iso).toLocaleTimeString("en", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 const root = (subject) => subject.replace(/^((re|fwd?):\s*)+/i, "") || subject;
 
 function CopyButton({ text }) {
@@ -88,29 +95,28 @@ export default function Conversation({
   onStar,
   onReply,
   onQuickReply,
+  onConnect,
   onDelete,
   onBack,
 }) {
   const last = thread[thread.length - 1],
-    [open, setOpen] = useState(new Set([last?.id])),
+    scroller = useRef(null),
+    [side, setSide] = useState(true),
+    [sideTab, setSideTab] = useState("members"),
     [confirm, setConfirm] = useState(false),
-    [drafting, setDrafting] = useState(false),
     [text, setText] = useState(""),
     [sending, setSending] = useState(false),
     [error, setError] = useState("");
   useEffect(() => {
-    setOpen(new Set([last?.id]));
     setConfirm(false);
-    setDrafting(false);
     setText("");
     setError("");
-  }, [chosen?.thread_id, last?.id]);
-  const toggle = (id) =>
-    setOpen((cur) => {
-      const next = new Set(cur);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  }, [chosen?.thread_id]);
+  // Keep the newest message in view, like a chat.
+  useEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [chosen?.thread_id, thread.length]);
   const title = root(thread[0]?.subject || chosen.subject),
     everyone = [
       ...new Set(
@@ -120,20 +126,21 @@ export default function Conversation({
         ]),
       ),
     ],
-    allOpen = open.size >= thread.length,
+    files = thread.flatMap((m) =>
+      m.attachments.map((f) => ({ ...f, from: m.sender_name })),
+    ),
     high = thread.some((m) => m.importance === "high"),
     replyTo = [
       ...new Set([last.sender_name, ...last.recipients.map((r) => r.name)]),
     ].filter((n) => n !== agent);
 
   async function send(e) {
-    e.preventDefault();
+    e?.preventDefault();
     setSending(true);
     setError("");
     try {
       await onQuickReply(last, text);
       setText("");
-      setDrafting(false);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -158,14 +165,18 @@ export default function Conversation({
         <span className="toolbar-title">{project?.name}</span>
         <div className="reader-actions">
           <button
+            className={"subtle-button" + (side ? " on" : "")}
+            title="Members and files"
+            aria-pressed={side}
+            onClick={() => setSide(!side)}
+          >
+            <PanelRight size={14} />
+            Details
+          </button>
+          <button
             className="subtle-button"
             disabled={!canWrite}
-            onClick={() => {
-              setDrafting(true);
-              requestAnimationFrame(() =>
-                document.getElementById("body")?.focus(),
-              );
-            }}
+            onClick={() => document.getElementById("body")?.focus()}
           >
             <CornerDownRight size={14} />
             Reply
@@ -184,107 +195,91 @@ export default function Conversation({
         </div>
       </div>
 
-      <div className="thread-scroll flat">
-        <div className="thread-heading">
-          <div className="title-row">
-            <h1>{title}</h1>
-            <button
-              className={"star-icon" + (starred ? " on" : "")}
-              aria-pressed={starred}
-              aria-label={starred ? "Remove star" : "Star this conversation"}
-              title={
-                starred ? "Starred. Click to remove" : "Star this conversation"
-              }
-              onClick={onStar}
-            >
-              <Star size={20} />
-            </button>
-          </div>
-          <div className="thread-meta">
-            {high && <span className="chip warn first">High priority</span>}
-            <div className="participants" aria-label="Participants">
-              {everyone.slice(0, 5).map((name) => (
-                <AgentAvatar
-                  key={name}
-                  className="avatar tiny"
-                  name={name}
-                  program={agentOf(name)?.program}
-                  model={agentOf(name)?.model}
-                />
-              ))}
+      <div className="chat-layout">
+        <div className="thread-scroll chat">
+          <div className="chat-head">
+            <div className="title-row">
+              <h1>{title}</h1>
+              <button
+                className={"star-icon" + (starred ? " on" : "")}
+                aria-pressed={starred}
+                aria-label={starred ? "Remove star" : "Star this conversation"}
+                title={
+                  starred
+                    ? "Starred. Click to remove"
+                    : "Star this conversation"
+                }
+                onClick={onStar}
+              >
+                <Star size={20} />
+              </button>
+            </div>
+            <div className="thread-meta">
+              {high && <span className="chip warn first">High priority</span>}
+              <div className="participants" aria-label="Participants">
+                {everyone.slice(0, 5).map((name) => (
+                  <AgentAvatar
+                    key={name}
+                    className="avatar tiny"
+                    name={name}
+                    program={agentOf(name)?.program}
+                    model={agentOf(name)?.model}
+                  />
+                ))}
+                <span>
+                  {everyone.slice(0, 3).join(", ")}
+                  {everyone.length > 3 ? ` +${everyone.length - 3}` : ""}
+                </span>
+              </div>
               <span>
-                {everyone.slice(0, 3).join(", ")}
-                {everyone.length > 3 ? ` +${everyone.length - 3}` : ""}
+                {thread.length} {thread.length === 1 ? "message" : "messages"}
               </span>
             </div>
-            <span>
-              {thread.length} {thread.length === 1 ? "message" : "messages"}
-            </span>
-            {thread.length > 2 && (
-              <button
-                className="link-button"
-                onClick={() =>
-                  setOpen(
-                    allOpen
-                      ? new Set([last.id])
-                      : new Set(thread.map((m) => m.id)),
-                  )
-                }
-              >
-                {allOpen ? "Collapse all" : "Expand all"}
-              </button>
-            )}
           </div>
-        </div>
 
-        <div className="messages">
-          {thread.map((m) => {
-            const expanded = open.has(m.id),
-              sender = agentOf(m.sender_name),
-              readers = m.recipients.filter((r) => r.read_at);
-            return (
-              <article
-                className={"mail" + (expanded ? " open" : "")}
-                key={m.id}
-              >
-                <header
-                  onClick={() => toggle(m.id)}
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={expanded}
-                  onKeyDown={(e) =>
-                    (e.key === "Enter" || e.key === " ") &&
-                    (e.preventDefault(), toggle(m.id))
+          <div className="chat-scroll" ref={scroller}>
+            {thread.map((m, i) => {
+              const sender = agentOf(m.sender_name),
+                mine = m.sender_name === agent,
+                prev = thread[i - 1],
+                grouped =
+                  prev &&
+                  prev.sender_name === m.sender_name &&
+                  Date.parse(m.created_at) - Date.parse(prev.created_at) <
+                    300000,
+                readers = m.recipients.filter((r) => r.read_at);
+              return (
+                <div
+                  className={
+                    "bubble-row" +
+                    (mine ? " mine" : "") +
+                    (grouped ? " grouped" : "")
                   }
+                  key={m.id}
                 >
-                  <AgentAvatar
-                    name={m.sender_name}
-                    program={sender?.program}
-                    model={sender?.model}
-                    className={expanded ? "avatar" : "avatar small"}
-                  />
-                  <div className="mail-who">
-                    <div>
-                      <strong>{m.sender_name}</strong>
-                      {sender?.program && <em>{sender.program}</em>}
-                    </div>
-                    <span>
-                      {expanded ? recipientsLabel(m) : snippet(m.body)}
-                    </span>
-                  </div>
-                  <time title={full(m.created_at)}>{ago(m.created_at)}</time>
-                </header>
-
-                {expanded && (
-                  <div className="mail-body">
-                    <Markdown>{m.body}</Markdown>
-
-                    {m.attachments.length > 0 && (
-                      <div className="attachments">
-                        <div className="section-label">
-                          {m.attachments.length} ATTACHMENT
-                          {m.attachments.length === 1 ? "" : "S"}
-                        </div>
+                  {grouped ? (
+                    <span className="bubble-gap" />
+                  ) : (
+                    <AgentAvatar
+                      name={m.sender_name}
+                      program={sender?.program}
+                      model={sender?.model}
+                      className="avatar"
+                    />
+                  )}
+                  <div className="bubble-col">
+                    {!grouped && (
+                      <div className="bubble-meta">
+                        <strong>{m.sender_name}</strong>
+                        {sender?.program && <em>{sender.program}</em>}
+                        <time title={full(m.created_at)}>
+                          {clock(m.created_at)}
+                        </time>
+                      </div>
+                    )}
+                    <div className="bubble">
+                      <Markdown>{m.body}</Markdown>
+                      {m.attachments.length > 0 && (
                         <div className="attachment-grid">
                           {m.attachments.map((f) =>
                             isImage(f.filename) ? (
@@ -323,41 +318,39 @@ export default function Conversation({
                             ),
                           )}
                         </div>
-                      </div>
-                    )}
-
-                    <footer className="mail-foot">
+                      )}
+                    </div>
+                    <div className="bubble-foot">
                       <span className="delivery">
-                        <CheckCheck size={13} />
+                        <CheckCheck size={12} />
                         {readers.length
                           ? "Read by " + readers.map((r) => r.name).join(", ")
                           : "Delivered"}
                       </span>
+                      <span className="bubble-time">{ago(m.created_at)}</span>
                       <CopyButton text={m.body} />
-                    </footer>
+                    </div>
                   </div>
-                )}
-              </article>
-            );
-          })}
-        </div>
+                </div>
+              );
+            })}
+          </div>
 
-        {canWrite &&
-          (drafting ? (
-            <form className="inline-reply" onSubmit={send}>
-              <div className="inline-reply-head">
-                <AgentAvatar
-                  className="avatar small"
-                  name={agent}
-                  program={agentOf(agent)?.program}
-                  model={agentOf(agent)?.model}
-                />
-                <span>
-                  Replying to{" "}
-                  <strong>
-                    {(replyTo.length ? replyTo : [agent]).join(", ")}
-                  </strong>
-                </span>
+          {canWrite && (
+            <form className="chat-input" onSubmit={send}>
+              <Composer
+                value={text}
+                onChange={setText}
+                placeholder={`Message ${(replyTo.length ? replyTo : [agent]).join(", ")}`}
+                onSubmit={() => text.trim() && !sending && send()}
+              />
+              {error && (
+                <div className="error" role="alert">
+                  {error}
+                </div>
+              )}
+              <div className="chat-input-actions">
+                <span className="muted small">Ctrl+Enter to send</span>
                 <button
                   type="button"
                   className="icon-button"
@@ -367,46 +360,97 @@ export default function Conversation({
                 >
                   <Maximize2 size={15} />
                 </button>
-              </div>
-              <Composer
-                value={text}
-                onChange={setText}
-                placeholder="Write your reply. Markdown works: **bold**, `code`, lists, links."
-              />
-              {error && (
-                <div className="error" role="alert">
-                  {error}
-                </div>
-              )}
-              <div className="menu-actions">
                 <button className="primary" disabled={sending || !text.trim()}>
                   <Send size={14} />
                   Send reply
                 </button>
-                <button
-                  type="button"
-                  className="subtle-button"
-                  onClick={() => {
-                    setDrafting(false);
-                    setText("");
-                  }}
-                >
-                  Discard
-                </button>
               </div>
             </form>
-          ) : (
-            <button className="reply-box" onClick={() => setDrafting(true)}>
-              <AgentAvatar
-                className="avatar small"
-                name={agent}
-                program={agentOf(agent)?.program}
-                model={agentOf(agent)?.model}
-              />
-              Reply to {(replyTo.length ? replyTo : [agent]).join(", ")}...
-              <CornerDownRight size={15} />
-            </button>
-          ))}
+          )}
+        </div>
+        {side && (
+          <aside className="chat-side">
+            <div className="side-tabs" role="tablist">
+              {[
+                ["members", "Members"],
+                ["files", "Files"],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  role="tab"
+                  aria-selected={sideTab === id}
+                  className={sideTab === id ? "active" : ""}
+                  onClick={() => setSideTab(id)}
+                >
+                  {label}
+                  <span>
+                    {id === "members" ? everyone.length : files.length}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {sideTab === "members" ? (
+              <div className="side-list">
+                {everyone.map((name) => {
+                  const a = agentOf(name);
+                  return (
+                    <div className="side-member" key={name}>
+                      <AgentAvatar
+                        className="avatar"
+                        name={name}
+                        program={a?.program}
+                        model={a?.model}
+                      />
+                      <div>
+                        <strong>
+                          {name}
+                          {name === agent && <em className="chip">You</em>}
+                        </strong>
+                        <span>{a ? `${a.program} · ${a.model}` : "Agent"}</span>
+                        {a?.last_active && (
+                          <span>Active {ago(a.last_active)}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {onConnect && (
+                  <button
+                    className="subtle-button side-add"
+                    onClick={onConnect}
+                  >
+                    <Plus size={14} />
+                    Connect another agent
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="side-list">
+                {files.length ? (
+                  files.map((f) => (
+                    <a
+                      className="side-file"
+                      key={f.id}
+                      href={f.download_url}
+                      download={f.filename}
+                    >
+                      <FileText size={16} />
+                      <div>
+                        <strong>{f.filename}</strong>
+                        <span>
+                          {bytes(f.size)} · {f.from}
+                        </span>
+                      </div>
+                      <Download size={14} />
+                    </a>
+                  ))
+                ) : (
+                  <p className="muted small">No files in this conversation.</p>
+                )}
+              </div>
+            )}
+          </aside>
+        )}
       </div>
     </>
   );
