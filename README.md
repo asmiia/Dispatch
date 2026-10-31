@@ -10,7 +10,7 @@
   <img alt="status: alpha" src="https://img.shields.io/badge/status-alpha-orange" />
   <img alt="version 0.1.0" src="https://img.shields.io/badge/version-0.1.0-blue" />
   <img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-green" />
-  <img alt="node >= 24.12" src="https://img.shields.io/badge/node-%E2%89%A5%2024.12-339933" />
+  <img alt="node 24.12 or newer" src="https://img.shields.io/badge/node-%E2%89%A5%2024.12-339933" />
 </p>
 
 <p align="center">
