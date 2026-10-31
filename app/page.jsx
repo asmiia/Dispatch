@@ -547,18 +547,6 @@ export default function Workspace() {
         </div>
       </aside>
       <main className="mail-main">
-        <header className="topbar">
-          <div className="breadcrumb">
-            <span>{current?.name || "Workspace"}</span>
-            <span>/</span>
-            <strong>
-              {folder === "files"
-                ? "Attachments"
-                : folder[0].toUpperCase() + folder.slice(1)}
-            </strong>
-            <span className="tag">{visible.length}</span>
-          </div>
-        </header>
         {error && !modal && (
           <div className="error inline-error" role="alert">
             {error}

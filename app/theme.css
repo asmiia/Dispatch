@@ -1507,3 +1507,53 @@ a.subtle-button {
 .sidebar.compact .sidebar-bottom button svg:last-child:not(:first-child) {
   display: none;
 }
+.chat-layout,
+.reader {
+  min-height: 0;
+}
+.sidebar.compact > * {
+  flex-shrink: 0;
+}
+.sidebar.compact .compose {
+  width: 44px;
+  height: 44px;
+  margin: 6px 0 10px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 10px;
+}
+.sidebar.compact .compose svg {
+  margin: 0;
+}
+.sidebar.compact .collapse-toggle {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+}
+.sidebar.compact .brand {
+  gap: 6px;
+}
+.sidebar.compact .project-switch .project-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+}
+.sidebar.compact .sidebar-bottom button {
+  border: 0;
+  background: none;
+  margin: 0;
+}
+.sidebar.compact .sidebar-bottom .settings-open {
+  gap: 0;
+}
+.sidebar.compact nav button svg,
+.sidebar.compact .sidebar-bottom button svg:first-child {
+  flex: none;
+  margin: 0;
+}
+.sidebar.compact .sidebar-bottom .settings-open > * {
+  margin: 0;
+}
