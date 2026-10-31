@@ -405,7 +405,7 @@ export async function POST(request, { params }) {
           project_key: body.project_key,
           name,
           program: "human",
-          model: "web",
+          model: "web:" + user.id,
         }),
       );
     }

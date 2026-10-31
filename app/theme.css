@@ -1617,3 +1617,70 @@ a.subtle-button {
   align-items: center;
   gap: 10px;
 }
+
+/* My messages on the right, one-piece chat panel, bottom collapse toggle */
+.bubble-row.mine {
+  flex-direction: row-reverse;
+  margin-left: auto;
+}
+.bubble-row.mine .bubble-col {
+  justify-items: end;
+}
+.bubble-row.mine .bubble {
+  border-top-left-radius: 18px;
+  border-top-right-radius: 6px;
+}
+.bubble-row.mine.grouped .bubble {
+  border-top-right-radius: 18px;
+}
+.bubble-row.mine .bubble-meta,
+.bubble-row.mine .bubble-foot {
+  justify-content: flex-end;
+}
+.bubble-row.mine .avatar {
+  display: none;
+}
+.bubble-row.mine .bubble-gap {
+  display: none;
+}
+.chat-side {
+  border-left: 0;
+}
+.side-person {
+  padding-left: 4px;
+}
+.side-group > .side-person .avatar {
+  width: 36px;
+  height: 36px;
+}
+.collapse-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 5px;
+  color: var(--t-9a9a9a);
+  font-size: 13px;
+}
+.collapse-toggle:hover {
+  background: var(--c-151515);
+  color: var(--t-ededed);
+}
+.sidebar.compact .collapse-toggle {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 10px;
+}
+.sidebar.compact .compose {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+}
+.sidebar.compact .compose svg {
+  margin: 0 !important;
+}

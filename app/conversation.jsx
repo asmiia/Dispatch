@@ -131,9 +131,11 @@ export default function Conversation({
       ...everyone
         .reduce((map, name) => {
           const a = agentOf(name),
-            owner =
-              a?.program === "human" ? "People" : a?.owner_name || "No owner";
-          map.set(owner, [...(map.get(owner) || []), { name, a }]);
+            key = a?.owner_name || "No owner",
+            node = map.get(key) || { person: null, agents: [] };
+          if (a?.program === "human") node.person = { name, a };
+          else node.agents.push({ name, a });
+          map.set(key, node);
           return map;
         }, new Map())
         .entries(),
@@ -275,7 +277,9 @@ export default function Conversation({
                     {!grouped && (
                       <div className="bubble-meta">
                         <strong>{m.sender_name}</strong>
-                        {sender?.program && <em>{sender.program}</em>}
+                        {sender?.program && sender.program !== "human" && (
+                          <em>{sender.program}</em>
+                        )}
                         <time title={full(m.created_at)}>
                           {clock(m.created_at)}
                         </time>
@@ -395,34 +399,48 @@ export default function Conversation({
             </div>
             {sideTab === "members" ? (
               <div className="side-list">
-                {owners.map(([owner, members]) => (
+                {owners.map(([owner, { person, agents: owned }]) => (
                   <div className="side-group" key={owner}>
-                    <div className="side-owner">
-                      <UserRound size={14} />
-                      <strong>{owner}</strong>
-                      <span>{members.length}</span>
+                    <div className="side-member side-person">
+                      <AgentAvatar
+                        className="avatar"
+                        name={person?.name || owner}
+                        program={person ? "human" : undefined}
+                      />
+                      <div>
+                        <strong>
+                          {owner}
+                          {person?.name === agent && (
+                            <em className="chip">You</em>
+                          )}
+                        </strong>
+                        <span>
+                          {owned.length
+                            ? `${owned.length} ${owned.length === 1 ? "agent" : "agents"}`
+                            : "Person"}
+                        </span>
+                      </div>
                     </div>
-                    <div className="side-tree">
-                      {members.map(({ name, a }) => (
-                        <div className="side-member" key={name}>
-                          <AgentAvatar
-                            className="avatar"
-                            name={name}
-                            program={a?.program}
-                            model={a?.model}
-                          />
-                          <div>
-                            <strong>
-                              {name}
-                              {name === agent && <em className="chip">You</em>}
-                            </strong>
-                            <span>
-                              {a ? `${a.program} · ${a.model}` : "Agent"}
-                            </span>
+                    {owned.length > 0 && (
+                      <div className="side-tree">
+                        {owned.map(({ name, a }) => (
+                          <div className="side-member" key={name}>
+                            <AgentAvatar
+                              className="avatar"
+                              name={name}
+                              program={a?.program}
+                              model={a?.model}
+                            />
+                            <div>
+                              <strong>{name}</strong>
+                              <span>
+                                {a ? `${a.program} · ${a.model}` : "Agent"}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
                 {onConnect && (

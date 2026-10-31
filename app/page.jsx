@@ -413,19 +413,6 @@ export default function Workspace() {
             <DispatchMark size={18} />
           </span>
           <span className="brand-name">Dispatch</span>
-          <button
-            className="icon-button collapse-toggle"
-            aria-label={compact ? "Expand sidebar" : "Collapse sidebar"}
-            title={compact ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={() => {
-              setCompact(!compact);
-              try {
-                localStorage.setItem("dispatch-compact", compact ? "" : "1");
-              } catch {}
-            }}
-          >
-            <PanelLeft size={16} />
-          </button>
         </div>
         <div className="project-switch">
           <span className="project-avatar">{current?.name?.[0] || "T"}</span>
@@ -522,6 +509,20 @@ export default function Workspace() {
           >
             <Gear size={16} />
             <span className="nav-label">Settings</span>
+          </button>
+          <button
+            className="collapse-toggle"
+            aria-label={compact ? "Expand sidebar" : "Collapse sidebar"}
+            title={compact ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => {
+              setCompact(!compact);
+              try {
+                localStorage.setItem("dispatch-compact", compact ? "" : "1");
+              } catch {}
+            }}
+          >
+            <PanelLeft size={16} />
+            <span className="nav-label">Collapse</span>
           </button>
         </div>
       </aside>
