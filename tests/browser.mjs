@@ -117,10 +117,6 @@ try {
   );
   mkdirSync("artifacts", { recursive: true });
   await page.screenshot({ path: "artifacts/mail-desktop.png", fullPage: true });
-  await page
-    .getByRole("button", { name: "Reply", exact: true })
-    .first()
-    .click();
   await page.locator("#body").fill("Downloaded and verified.");
   // Self-addressed notes keep the current agent as the reply recipient.
   await page.getByRole("button", { name: "Send reply", exact: true }).click();

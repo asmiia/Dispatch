@@ -14,6 +14,7 @@ import {
   Send,
   Star,
   Trash2,
+  UserRound,
 } from "lucide-react";
 import AgentAvatar from "./agent-avatar";
 import Markdown from "./markdown";
@@ -126,6 +127,16 @@ export default function Conversation({
         ]),
       ),
     ],
+    owners = [
+      ...everyone
+        .reduce((map, name) => {
+          const a = agentOf(name),
+            owner = a?.owner_name || "No owner";
+          map.set(owner, [...(map.get(owner) || []), { name, a }]);
+          return map;
+        }, new Map())
+        .entries(),
+    ],
     files = thread.flatMap((m) =>
       m.attachments.map((f) => ({ ...f, from: m.sender_name })),
     ),
@@ -154,51 +165,17 @@ export default function Conversation({
 
   return (
     <>
-      <div className="reader-toolbar">
-        <button
-          className="icon-button mobile-back"
-          title="Back"
-          onClick={onBack}
-        >
-          <ArrowLeft size={17} />
-        </button>
-        <span className="toolbar-title">{project?.name}</span>
-        <div className="reader-actions">
-          <button
-            className={"subtle-button" + (side ? " on" : "")}
-            title="Members and files"
-            aria-pressed={side}
-            onClick={() => setSide(!side)}
-          >
-            <PanelRight size={14} />
-            Details
-          </button>
-          <button
-            className="subtle-button"
-            disabled={!canWrite}
-            onClick={() => document.getElementById("body")?.focus()}
-          >
-            <CornerDownRight size={14} />
-            Reply
-          </button>
-          {canDelete && (
-            <button
-              className="subtle-button danger"
-              title="Delete this conversation and files only attached to it"
-              onClick={() => (confirm ? onDelete() : setConfirm(true))}
-              onBlur={() => setConfirm(false)}
-            >
-              <Trash2 size={14} />
-              {confirm ? "Confirm delete" : "Delete"}
-            </button>
-          )}
-        </div>
-      </div>
-
       <div className="chat-layout">
         <div className="thread-scroll chat">
           <div className="chat-head">
             <div className="title-row">
+              <button
+                className="icon-button mobile-back"
+                title="Back"
+                onClick={onBack}
+              >
+                <ArrowLeft size={17} />
+              </button>
               <h1>{title}</h1>
               <button
                 className={"star-icon" + (starred ? " on" : "")}
@@ -213,6 +190,32 @@ export default function Conversation({
               >
                 <Star size={20} />
               </button>
+              <button
+                className={"star-icon" + (side ? " active" : "")}
+                aria-pressed={side}
+                aria-label="Members and files"
+                title="Members and files"
+                onClick={() => setSide(!side)}
+              >
+                <PanelRight size={19} />
+              </button>
+              {canDelete && (
+                <button
+                  className={"star-icon danger" + (confirm ? " confirm" : "")}
+                  aria-label={
+                    confirm ? "Confirm delete" : "Delete conversation"
+                  }
+                  title={
+                    confirm
+                      ? "Click again to delete this conversation and its files"
+                      : "Delete conversation"
+                  }
+                  onClick={() => (confirm ? onDelete() : setConfirm(true))}
+                  onBlur={() => setConfirm(false)}
+                >
+                  <Trash2 size={19} />
+                </button>
+              )}
             </div>
             <div className="thread-meta">
               {high && <span className="chip warn first">High priority</span>}
@@ -391,29 +394,36 @@ export default function Conversation({
             </div>
             {sideTab === "members" ? (
               <div className="side-list">
-                {everyone.map((name) => {
-                  const a = agentOf(name);
-                  return (
-                    <div className="side-member" key={name}>
-                      <AgentAvatar
-                        className="avatar"
-                        name={name}
-                        program={a?.program}
-                        model={a?.model}
-                      />
-                      <div>
-                        <strong>
-                          {name}
-                          {name === agent && <em className="chip">You</em>}
-                        </strong>
-                        <span>{a ? `${a.program} · ${a.model}` : "Agent"}</span>
-                        {a?.last_active && (
-                          <span>Active {ago(a.last_active)}</span>
-                        )}
-                      </div>
+                {owners.map(([owner, members]) => (
+                  <div className="side-group" key={owner}>
+                    <div className="side-owner">
+                      <UserRound size={14} />
+                      <strong>{owner}</strong>
+                      <span>{members.length}</span>
                     </div>
-                  );
-                })}
+                    <div className="side-tree">
+                      {members.map(({ name, a }) => (
+                        <div className="side-member" key={name}>
+                          <AgentAvatar
+                            className="avatar"
+                            name={name}
+                            program={a?.program}
+                            model={a?.model}
+                          />
+                          <div>
+                            <strong>
+                              {name}
+                              {name === agent && <em className="chip">You</em>}
+                            </strong>
+                            <span>
+                              {a ? `${a.program} · ${a.model}` : "Agent"}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
                 {onConnect && (
                   <button
                     className="subtle-button side-add"
