@@ -62,6 +62,8 @@ export async function GET(request, { params }) {
       return Response.json(acc.mfaStatus(actor));
     if (path.join("/") === "settings/activity")
       return Response.json(acc.activity(actor));
+    if (path.join("/") === "starred")
+      return Response.json(acc.starred(db, url.searchParams.get("project")));
     if (path[0] === "avatars" && path.length === 2) {
       const a = acc.avatar(actor, path[1]);
       if (request.headers.get("if-none-match") === `"${a.version}"`)
@@ -129,10 +131,23 @@ export async function GET(request, { params }) {
       return Response.json(db.thread(path[1]));
     if (path[0] === "files" && path.length === 2) {
       const { file, bytes } = db.download(path[1]);
+      const ext = /\.(png|jpe?g|gif|webp|avif)$/i
+          .exec(file.filename)?.[1]
+          ?.toLowerCase(),
+        inlineType =
+          url.searchParams.get("inline") === "1" && ext
+            ? "image/" + (ext === "jpg" ? "jpeg" : ext)
+            : null;
       return new Response(bytes, {
         headers: {
-          "Content-Type": "application/octet-stream",
-          "Content-Disposition": `attachment; filename="download"; filename*=UTF-8''${encodeURIComponent(file.filename).replace(/['()*]/g, (c) => "%" + c.charCodeAt(0).toString(16))}`,
+          ...(inlineType
+            ? {
+                "Content-Type": inlineType,
+                "Content-Security-Policy":
+                  "default-src 'none'; img-src 'self'; sandbox",
+              }
+            : { "Content-Type": "application/octet-stream" }),
+          "Content-Disposition": `${inlineType ? "inline" : "attachment"}; filename="download"; filename*=UTF-8''${encodeURIComponent(file.filename).replace(/['()*]/g, (c) => "%" + c.charCodeAt(0).toString(16))}`,
           "Content-Length": String(bytes.length),
           "X-Content-Type-Options": "nosniff",
           "Cache-Control": "private, no-store",
@@ -263,6 +278,8 @@ export async function POST(request, { params }) {
       );
       return Response.json({ ...result, emailed });
     }
+    if (route === "messages/star")
+      return Response.json(acc.starThread(db, body));
     if (route === "settings/avatar")
       return Response.json(acc.setAvatar(actor, body));
     if (route === "settings/avatar/remove")

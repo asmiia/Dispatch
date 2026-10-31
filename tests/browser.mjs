@@ -117,11 +117,14 @@ try {
   );
   mkdirSync("artifacts", { recursive: true });
   await page.screenshot({ path: "artifacts/mail-desktop.png", fullPage: true });
-  await page.getByRole("button", { name: "Reply", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Reply", exact: true })
+    .first()
+    .click();
   await page.locator("#body").fill("Downloaded and verified.");
   // Self-addressed notes keep the current agent as the reply recipient.
-  await page.getByRole("button", { name: "Send message", exact: true }).click();
-  await page.getByText("2 messages in this thread", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Send reply", exact: true }).click();
+  await page.getByText("2 messages", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Coordination", exact: true }).click();
   await page.getByRole("button", { name: "leases", exact: true }).click();

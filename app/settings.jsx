@@ -7,7 +7,8 @@ import Members from "./members";
 import Account from "./account";
 import Overview from "./overview";
 import InstanceUsers from "./instance-users";
-import { AccountData, TeamData } from "./data";
+import TeamSettings from "./team-settings";
+import TeamSwitcher from "./team-switcher";
 import { ThemeSwitch } from "./theme-toggle";
 import Select from "./select";
 import { useEffect, useState } from "react";
@@ -234,25 +235,17 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                 ))}
               </div>
             ))}
-            {data && data.teams.length > 1 && (
-              <div className="nav-team-bottom">
-                <span className="settings-group-label">Switch team</span>
-                <Select
-                  aria-label="Selected team"
-                  value={team}
-                  onChange={(e) => {
-                    setTeam(e.target.value);
-                    load(e.target.value);
-                    setSecret("");
-                  }}
-                >
-                  {data.teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} · {t.role}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+            {data && (
+              <TeamSwitcher
+                teams={data.teams}
+                team={team}
+                run={run}
+                onSwitch={(id) => {
+                  setTeam(id);
+                  load(id);
+                  setSecret("");
+                }}
+              />
             )}
           </nav>
           <div className="settings-content">
@@ -282,105 +275,19 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                 {tab === "activity" && <Activity api={api} />}
                 {tab === "backups" && <Backups api={api} />}
                 {tab === "team" && (
-                  <>
-                    <h3>Team settings</h3>
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        run("team", {
-                          team_id: team,
-                          name: teamName,
-                          quota_bytes: Number(quota) * 1048576,
-                        });
-                      }}
-                    >
-                      <label htmlFor="team-name">Team name</label>
-                      <input
-                        id="team-name"
-                        value={teamName}
-                        onChange={(e) => setTeamName(e.target.value)}
-                        required
-                        disabled={!admin}
-                      />
-                      <label htmlFor="quota">
-                        Attachment storage limit (MiB)
-                      </label>
-                      <input
-                        id="quota"
-                        type="number"
-                        min={6}
-                        max={10240}
-                        value={quota}
-                        onChange={(e) => setQuota(e.target.value)}
-                        disabled={!admin}
-                      />
-                      <button className="primary" disabled={!admin || busy}>
-                        Save team
-                      </button>
-                    </form>
-                    <hr />
-                    <form
-                      onSubmit={async (e) => {
-                        e.preventDefault();
-                        const r = await run("teams", { name: newTeam });
-                        if (r) {
-                          setTeam(r.id);
-                          load(r.id);
-                          setNewTeam("");
-                        }
-                      }}
-                    >
-                      <h4>Create another team</h4>
-                      <label htmlFor="create-team">New team name</label>
-                      <input
-                        id="create-team"
-                        value={newTeam}
-                        onChange={(e) => setNewTeam(e.target.value)}
-                        required
-                      />
-                      <button className="subtle-button" disabled={busy}>
-                        <Plus size={14} />
-                        Create team
-                      </button>
-                    </form>
-                    <hr />
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        run("join", { code: joinCode });
-                      }}
-                    >
-                      <h4>Join a team</h4>
-                      <label htmlFor="join-code">Invitation code</label>
-                      <input
-                        id="join-code"
-                        value={joinCode}
-                        onChange={(e) => setJoinCode(e.target.value)}
-                        required
-                      />
-                      <button className="subtle-button" disabled={busy}>
-                        Accept invitation
-                      </button>
-                    </form>
-                    {admin && (
-                      <TeamData
-                        key={team}
-                        api={api}
-                        team={team}
-                        teamName={teamName}
-                        role={data.role}
-                        projects={data.projects || []}
-                        retention={
-                          data.teams.find((t) => t.id === team)
-                            ?.retention_days || 0
-                        }
-                        onChanged={async () => {
-                          await load("");
-                          await onChanged();
-                        }}
-                      />
-                    )}
-                  </>
+                  <TeamSettings
+                    data={data}
+                    team={team}
+                    admin={admin}
+                    owner={owner}
+                    run={run}
+                    busy={busy}
+                    api={api}
+                    onChanged={async () => {
+                      await load("");
+                      await onChanged();
+                    }}
+                  />
                 )}
                 {tab === "members" && (
                   <Members

@@ -16,21 +16,16 @@ import {
   RefreshCw,
   Loader2,
   X,
-  FileText,
-  Download,
-  MessageSquare,
-  CornerDownRight,
-  CheckCheck,
-  ArrowLeft,
   Check,
   Trash2,
+  Star,
 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import Settings from "./settings";
 import Login from "./login";
 import AgentAvatar, { logoFor } from "./agent-avatar";
 import UserAvatar from "./user-avatar";
+import Conversation from "./conversation";
+import Composer from "./composer";
 function DispatchMark({ size = 20 }) {
   return (
     <svg
@@ -51,6 +46,18 @@ function DispatchMark({ size = 20 }) {
     </svg>
   );
 }
+// Short relative time for the message list: now, 5m, 3h, 2d, then the date.
+const when = (iso) => {
+  const t = (Date.now() - Date.parse(iso)) / 1000;
+  if (t < 60) return "now";
+  if (t < 3600) return `${Math.round(t / 60)}m`;
+  if (t < 86400) return `${Math.round(t / 3600)}h`;
+  if (t < 604800) return `${Math.round(t / 86400)}d`;
+  return new Date(iso).toLocaleDateString("en", {
+    month: "short",
+    day: "numeric",
+  });
+};
 // One-line plain-text preview of a Markdown body.
 const preview = (md) =>
   md
@@ -120,7 +127,7 @@ export default function Workspace() {
     [uploading, setUploading] = useState(false);
   const fileInput = useRef(null),
     searchInput = useRef(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [starred, setStarred] = useState(() => new Set());
   const refreshProjects = useCallback(async () => {
     try {
       const [list, me] = await Promise.all([api("projects"), api("me")]);
@@ -145,11 +152,13 @@ export default function Workspace() {
       return;
     }
     try {
-      const [people, mail, list] = await Promise.all([
+      const [people, mail, list, stars] = await Promise.all([
         api("agents?project=" + project),
         api("messages?project=" + project),
         api("projects"),
+        api("starred?project=" + project),
       ]);
+      setStarred(new Set(stars.threads));
       setProjects(list);
       setAgents(people);
       setAgent((current) =>
@@ -202,20 +211,43 @@ export default function Workspace() {
       !!user?.site_admin ||
       user?.teams?.some((t) => ["owner", "admin"].includes(t.role));
   const agentOf = (name) => agents.find((a) => a.name === name);
+  async function toggleStar(threadId) {
+    const on = !starred.has(threadId);
+    setStarred((cur) => {
+      const next = new Set(cur);
+      on ? next.add(threadId) : next.delete(threadId);
+      return next;
+    });
+    try {
+      await api("messages/star", { thread_id: threadId, starred: on });
+    } catch (e) {
+      setError(e.message);
+      refresh();
+    }
+  }
   const unread = (m) =>
     m.recipients.some((r) => (!agent || r.name === agent) && !r.read_at);
   const visible = messages.filter(
     (m) =>
-      (folder === "sent"
-        ? m.sender_name === agent
-        : folder === "files"
-          ? m.attachments.length
-          : (!agent || m.recipients.some((r) => r.name === agent)) &&
-            (folder !== "unread" || unread(m))) &&
+      (folder === "starred"
+        ? starred.has(m.thread_id)
+        : folder === "sent"
+          ? m.sender_name === agent
+          : folder === "files"
+            ? m.attachments.length
+            : (!agent || m.recipients.some((r) => r.name === agent)) &&
+              (folder !== "unread" || unread(m))) &&
       `${m.subject} ${m.body} ${m.sender_name}`
         .toLowerCase()
         .includes(query.toLowerCase()),
   );
+  const seen = new Set(),
+    rows =
+      folder === "starred"
+        ? visible.filter((m) => !seen.has(m.thread_id) && seen.add(m.thread_id))
+        : visible,
+    threadSize = (m) =>
+      messages.filter((x) => x.thread_id === m.thread_id).length;
   const chosen = thread.find((m) => m.id === selected) || thread[0];
   async function openMessage(m) {
     setSelected(m.id);
@@ -232,7 +264,22 @@ export default function Workspace() {
       }
     }
   }
-  function compose(reply) {
+  async function quickReply(reply, body_md) {
+    const others = [
+      ...new Set([reply.sender_name, ...reply.recipients.map((r) => r.name)]),
+    ].filter((n) => n !== agent);
+    await api("messages", {
+      to: others.length ? others : [agent],
+      subject: reply.subject,
+      body_md,
+      thread_id: reply.thread_id,
+      project_key: project,
+      sender_name: agent,
+    });
+    setThread(await api("messages/" + selected));
+    await refresh();
+  }
+  function compose(reply, body = "") {
     const to = reply
       ? [
           ...new Set([
@@ -244,7 +291,7 @@ export default function Workspace() {
     setDraft({
       to: reply && !to.length ? [agent] : to,
       subject: reply?.subject || "",
-      body_md: "",
+      body_md: body,
       attachment_paths: [],
       ...(reply ? { thread_id: reply.thread_id } : {}),
     });
@@ -380,6 +427,7 @@ export default function Workspace() {
           {[
             ["inbox", Inbox, "Inbox"],
             ["unread", Mail, "Unread"],
+            ["starred", Star, "Starred"],
             ["sent", Send, "Sent"],
             ["files", Paperclip, "Attachments"],
           ].map(([id, Icon, label]) => (
@@ -402,6 +450,9 @@ export default function Workspace() {
                     ).length
                   }
                 </span>
+              )}
+              {id === "starred" && starred.size > 0 && (
+                <span className="count">{starred.size}</span>
               )}
               {id === "unread" && (
                 <span className="count">{messages.filter(unread).length}</span>
@@ -553,7 +604,7 @@ export default function Workspace() {
               </span>
             </div>
             <div className="message-scroll">
-              {visible.map((m) => (
+              {rows.map((m) => (
                 <button
                   key={m.id}
                   className={
@@ -563,44 +614,65 @@ export default function Workspace() {
                   }
                   onClick={() => openMessage(m)}
                 >
-                  <div className="message-line">
-                    <span className="sender">
-                      <AgentAvatar
-                        className="avatar small"
-                        name={m.sender_name}
-                        program={agentOf(m.sender_name)?.program}
-                        model={agentOf(m.sender_name)?.model}
-                      />
-                      {m.sender_name}
-                    </span>
-                    <time>
-                      {new Date(m.created_at).toLocaleDateString("en", {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </time>
-                  </div>
-                  <div className="message-subject">
-                    {m.subject}
-                    {unread(m) && <span className="new-dot" />}
-                  </div>
-                  <p>{preview(m.body)}</p>
-                  <div className="message-foot">
-                    <span>{m.recipients.map((r) => r.name).join(", ")}</span>
-                    {m.attachments.length > 0 && (
+                  <AgentAvatar
+                    name={m.sender_name}
+                    program={agentOf(m.sender_name)?.program}
+                    model={agentOf(m.sender_name)?.model}
+                  />
+                  <div className="row-main">
+                    <div className="row-top">
+                      <strong>{m.sender_name}</strong>
+                      {starred.has(m.thread_id) && (
+                        <Star size={12} className="row-star" />
+                      )}
+                      <time title={new Date(m.created_at).toLocaleString()}>
+                        {when(m.created_at)}
+                      </time>
+                    </div>
+                    <div className="row-subject">
+                      {unread(m) && <span className="new-dot" />}
+                      <span>{m.subject}</span>
+                      {folder === "starred" && threadSize(m) > 1 && (
+                        <span className="row-chip">{threadSize(m)}</span>
+                      )}
+                      {m.importance === "high" && (
+                        <span className="priority-dot" title="High priority" />
+                      )}
+                    </div>
+                    <p>{preview(m.body)}</p>
+                    <div className="row-foot">
                       <span>
-                        <Paperclip size={11} />
-                        {m.attachments.length}
+                        to {m.recipients.map((r) => r.name).join(", ")}
                       </span>
-                    )}
+                      {m.attachments.length > 0 && (
+                        <span className="row-chip">
+                          <Paperclip size={11} />
+                          {m.attachments.length}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </button>
               ))}
-              {!visible.length && (
+              {!rows.length && (
                 <div className="list-empty">
-                  <Inbox size={24} />
-                  <strong>{query ? "No matches" : "Nothing here yet"}</strong>
-                  <span>Your next conversation starts here.</span>
+                  {folder === "starred" ? (
+                    <Star size={24} />
+                  ) : (
+                    <Inbox size={24} />
+                  )}
+                  <strong>
+                    {query
+                      ? "No matches"
+                      : folder === "starred"
+                        ? "No starred conversations"
+                        : "Nothing here yet"}
+                  </strong>
+                  <span>
+                    {folder === "starred"
+                      ? "Open a conversation and click its star to pin it here."
+                      : "Your next conversation starts here."}
+                  </span>
                   {!project && canManage ? (
                     <button
                       className="subtle-button"
@@ -623,150 +695,35 @@ export default function Workspace() {
           <section className="reader">
             {chosen ? (
               <>
-                <div className="reader-toolbar">
-                  <button
-                    className="icon-button mobile-back"
-                    title="Back"
-                    onClick={() => {
+                <Conversation
+                  thread={thread}
+                  chosen={chosen}
+                  project={current}
+                  agent={agent}
+                  agentOf={agentOf}
+                  canWrite={canWrite}
+                  canDelete={canDelete}
+                  starred={starred.has(chosen.thread_id)}
+                  onStar={() => toggleStar(chosen.thread_id)}
+                  onReply={compose}
+                  onQuickReply={quickReply}
+                  onBack={() => {
+                    setSelected("");
+                    setThread([]);
+                  }}
+                  onDelete={async () => {
+                    try {
+                      await api("messages/delete", {
+                        ids: thread.map((m) => m.id),
+                      });
                       setSelected("");
                       setThread([]);
-                    }}
-                  >
-                    <ArrowLeft size={17} />
-                  </button>
-                  <span>
-                    <MessageSquare size={14} />
-                    Conversation
-                  </span>
-                  <div className="reader-actions">
-                    <button
-                      className="subtle-button"
-                      disabled={!canWrite}
-                      onClick={() => compose(chosen)}
-                    >
-                      <CornerDownRight size={14} />
-                      Reply
-                    </button>
-                    {canDelete && (
-                      <button
-                        className="subtle-button danger"
-                        title="Delete this conversation and files only attached to it"
-                        onClick={async () => {
-                          if (!confirmDelete) return setConfirmDelete(true);
-                          try {
-                            await api("messages/delete", {
-                              ids: thread.map((m) => m.id),
-                            });
-                            setConfirmDelete(false);
-                            setSelected("");
-                            setThread([]);
-                            refresh();
-                          } catch (e) {
-                            setError(e.message);
-                          }
-                        }}
-                        onBlur={() => setConfirmDelete(false)}
-                      >
-                        <Trash2 size={14} />
-                        {confirmDelete ? "Confirm delete" : "Delete"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="thread-scroll">
-                  <div className="thread-heading">
-                    <div className="eyebrow">
-                      {current?.name} / CONVERSATION
-                    </div>
-                    <h1>{chosen.subject}</h1>
-                    <span className="thread-count">
-                      {thread.length}{" "}
-                      {thread.length === 1 ? "message" : "messages"} in this
-                      thread
-                    </span>
-                  </div>
-                  {thread.map((m) => (
-                    <article className="message-detail" key={m.id}>
-                      <header>
-                        <AgentAvatar
-                          name={m.sender_name}
-                          program={agentOf(m.sender_name)?.program}
-                          model={agentOf(m.sender_name)?.model}
-                        />
-                        <div>
-                          <strong>{m.sender_name}</strong>
-                          <p>to {m.recipients.map((r) => r.name).join(", ")}</p>
-                        </div>
-                        <time>{date(m.created_at)}</time>
-                      </header>
-                      <div className="prose">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            a: (props) => (
-                              <a
-                                {...props}
-                                rel="noopener noreferrer"
-                                target="_blank"
-                              />
-                            ),
-                          }}
-                        >
-                          {m.body}
-                        </ReactMarkdown>
-                      </div>
-                      {m.attachments.length > 0 && (
-                        <div className="attachments">
-                          <div className="section-label">
-                            {m.attachments.length} ATTACHMENT
-                            {m.attachments.length === 1 ? "" : "S"}
-                          </div>
-                          {m.attachments.map((f) => (
-                            <a
-                              className="file-card"
-                              key={f.id}
-                              href={f.download_url}
-                              download={f.filename}
-                            >
-                              <span className="file-icon">
-                                <FileText size={19} />
-                              </span>
-                              <div>
-                                <strong>{f.filename}</strong>
-                                <span>{size(f.size)} · Download file</span>
-                              </div>
-                              <Download size={16} />
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                      <div className="delivery">
-                        <CheckCheck size={13} />
-                        {m.recipients.filter((r) => r.read_at).length
-                          ? "Read by " +
-                            m.recipients
-                              .filter((r) => r.read_at)
-                              .map((r) => r.name)
-                              .join(", ")
-                          : "Delivered"}
-                      </div>
-                    </article>
-                  ))}
-                  <button
-                    className="reply-box"
-                    disabled={!canWrite}
-                    onClick={() => compose(chosen)}
-                  >
-                    <AgentAvatar
-                      className="avatar small"
-                      name={agent}
-                      program={agentOf(agent)?.program}
-                      model={agentOf(agent)?.model}
-                    />
-                    Write a reply...
-                    <CornerDownRight size={15} />
-                  </button>
-                </div>
+                      refresh();
+                    } catch (e) {
+                      setError(e.message);
+                    }
+                  }}
+                />
               </>
             ) : (
               <div className="reader-empty">
@@ -878,14 +835,9 @@ export default function Workspace() {
                 <label htmlFor="body">
                   Message <span>Markdown supported</span>
                 </label>
-                <textarea
-                  id="body"
-                  required
-                  maxLength={100000}
+                <Composer
                   value={draft.body_md}
-                  onChange={(e) =>
-                    setDraft({ ...draft, body_md: e.target.value })
-                  }
+                  onChange={(v) => setDraft({ ...draft, body_md: v })}
                   placeholder="Share context, decisions, or what needs to happen next..."
                 />
                 {uploads.length > 0 && (

@@ -6,7 +6,7 @@ import PhotoEditor from "./photo-editor";
 import { ThemeSwitch } from "./theme-toggle";
 import { AccountData } from "./data";
 
-// Your profile: photo, name, theme, password, sign-out, and your data.
+// Your profile: a header with your photo, then cards for name, look, password, session and your data.
 export default function Account({ data, api, run, busy, setError, goTo }) {
   const user = data.user,
     [name, setName] = useState(user.name),
@@ -27,7 +27,13 @@ export default function Account({ data, api, run, busy, setError, goTo }) {
   }
   return (
     <>
-      <h3>Your account</h3>
+      <div className="page-head">
+        <h3>Your account</h3>
+        <p className="muted">
+          Your profile, how Dispatch looks for you, and your sign-in.
+        </p>
+      </div>
+
       <section className="profile-card">
         <UserAvatar
           id={user.id}
@@ -59,29 +65,29 @@ export default function Account({ data, api, run, busy, setError, goTo }) {
               </button>
             )}
           </div>
-          {!editing && (
-            <div className="profile-actions">
+        </div>
+        {!editing && (
+          <div className="profile-actions">
+            <button
+              type="button"
+              className="subtle-button"
+              onClick={() => setEditing(true)}
+            >
+              <Camera size={14} />
+              {user.avatar_v ? "Change photo" : "Add photo"}
+            </button>
+            {user.avatar_v && (
               <button
                 type="button"
                 className="subtle-button"
-                onClick={() => setEditing(true)}
+                onClick={() => run("avatar/remove", {})}
               >
-                <Camera size={14} />
-                {user.avatar_v ? "Change photo" : "Add photo"}
+                <Trash2 size={14} />
+                Remove
               </button>
-              {user.avatar_v && (
-                <button
-                  type="button"
-                  className="subtle-button"
-                  onClick={() => run("avatar/remove", {})}
-                >
-                  <Trash2 size={14} />
-                  Remove
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </section>
       {editing && (
         <PhotoEditor
@@ -91,96 +97,130 @@ export default function Account({ data, api, run, busy, setError, goTo }) {
         />
       )}
 
-      <h4>Profile</h4>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          run("profile", { name });
-        }}
-      >
-        <label htmlFor="profile-name">Display name</label>
-        <input
-          id="profile-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-        <label htmlFor="profile-email">Email</label>
-        <input id="profile-email" value={user.email} disabled readOnly />
-        <p className="muted">
-          Your email is your sign-in and can't be changed here yet.
-        </p>
-        <button
-          className="primary"
-          disabled={busy || name.trim() === user.name}
-        >
-          Save name
-        </button>
-      </form>
+      <div className="settings-grid">
+        <section className="card">
+          <h4>Profile</h4>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              run("profile", { name });
+            }}
+          >
+            <label className="field">
+              <span>Display name</span>
+              <input
+                id="profile-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </label>
+            <label className="field">
+              <span>Email</span>
+              <input value={user.email} disabled readOnly />
+            </label>
+            <p className="muted small">
+              Your email is your sign-in and can't be changed here yet.
+            </p>
+            <button
+              className="primary"
+              disabled={busy || name.trim() === user.name}
+            >
+              Save name
+            </button>
+          </form>
+        </section>
 
-      <h4>Appearance</h4>
-      <ThemeSwitch />
+        <section className="card">
+          <h4>Appearance</h4>
+          <p className="muted">Choose light, dark, or follow your device.</p>
+          <ThemeSwitch />
+        </section>
 
-      <h4>Password</h4>
-      <form
-        onSubmit={async (e) => {
-          e.preventDefault();
-          const r = await run("profile", {
-            name: user.name,
-            password: next,
-            current_password: current,
-          });
-          if (r) {
-            setCurrent("");
-            setNext("");
-          }
-        }}
-      >
-        <label htmlFor="current-password">Current password</label>
-        <input
-          id="current-password"
-          type="password"
-          autoComplete="current-password"
-          value={current}
-          onChange={(e) => setCurrent(e.target.value)}
-          required
-        />
-        <label htmlFor="new-password">New password</label>
-        <input
-          id="new-password"
-          type="password"
-          autoComplete="new-password"
-          minLength={12}
-          value={next}
-          onChange={(e) => setNext(e.target.value)}
-          required
-        />
-        <p className="muted">
-          At least 12 characters. Changing your password signs you out
-          everywhere.
-        </p>
-        <button className="primary" disabled={busy}>
-          Change password
-        </button>
-      </form>
+        <section className="card">
+          <h4>Password</h4>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const r = await run("profile", {
+                name: user.name,
+                password: next,
+                current_password: current,
+              });
+              if (r) {
+                setCurrent("");
+                setNext("");
+              }
+            }}
+          >
+            <label className="field">
+              <span>Current password</span>
+              <input
+                id="current-password"
+                type="password"
+                autoComplete="current-password"
+                value={current}
+                onChange={(e) => setCurrent(e.target.value)}
+                required
+              />
+            </label>
+            <label className="field">
+              <span>New password</span>
+              <input
+                id="new-password"
+                type="password"
+                autoComplete="new-password"
+                minLength={12}
+                value={next}
+                onChange={(e) => setNext(e.target.value)}
+                required
+              />
+            </label>
+            <p className="muted small">
+              At least 12 characters. Changing it signs you out everywhere.
+            </p>
+            <button className="primary" disabled={busy}>
+              Change password
+            </button>
+          </form>
+        </section>
 
-      <h4>Session</h4>
-      <button
-        type="button"
-        className="subtle-button"
-        onClick={async () => {
-          try {
-            await api("logout", {});
-            window.location.reload();
-          } catch (e) {
-            setError(e.message);
-          }
-        }}
-      >
-        <LogOut size={14} />
-        Sign out
-      </button>
-      <AccountData api={api} user={user} />
+        <section className="card">
+          <h4>Session</h4>
+          <p className="muted">
+            See where you're signed in, or end this session.
+          </p>
+          <div className="menu-actions">
+            <button
+              type="button"
+              className="subtle-button"
+              onClick={() => goTo("security")}
+            >
+              <ShieldCheck size={14} />
+              Security and devices
+            </button>
+            <button
+              type="button"
+              className="subtle-button"
+              onClick={async () => {
+                try {
+                  await api("logout", {});
+                  window.location.reload();
+                } catch (e) {
+                  setError(e.message);
+                }
+              }}
+            >
+              <LogOut size={14} />
+              Sign out
+            </button>
+          </div>
+        </section>
+
+        <section className="card wide">
+          <AccountData api={api} user={user} />
+        </section>
+      </div>
     </>
   );
 }

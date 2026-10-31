@@ -401,6 +401,33 @@ test(
           .status,
         403,
       );
+      // Stars are personal: each person has their own, and they go away with the conversation.
+      const threadId = sent.thread_id;
+      assert.ok(threadId);
+      const star = (who, body) => req("/api/messages/star", body, who);
+      assert.equal(
+        (await star(memberCookie, { thread_id: threadId })).status,
+        200,
+      );
+      const starsOf = async (who) =>
+        (
+          await (
+            await req(`/api/starred?project=${projectId}`, null, who)
+          ).json()
+        ).threads;
+      assert.deepEqual(await starsOf(memberCookie), [threadId]);
+      assert.deepEqual(await starsOf(cookie), []);
+      assert.equal(
+        (await star(cookie, { thread_id: "no-such-thread" })).status,
+        404,
+      );
+      assert.equal(
+        (await star(memberCookie, { thread_id: threadId, starred: false }))
+          .status,
+        200,
+      );
+      assert.deepEqual(await starsOf(memberCookie), []);
+      assert.equal((await star(cookie, { thread_id: threadId })).status, 200);
       const gz = Buffer.from(
         await (
           await req(`/api/settings/export/team?team=${team}`, null, cookie)
@@ -411,6 +438,7 @@ test(
         (await req("/api/messages/delete", { ids: [sent.id] }, cookie)).status,
         200,
       );
+      assert.deepEqual(await starsOf(cookie), []);
       assert.equal(
         (await req("/api/messages/delete", { ids: [sent.id] }, cookie)).status,
         404,
