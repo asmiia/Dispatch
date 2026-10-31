@@ -204,7 +204,7 @@ try {
     .getByRole("button", { name: "Agent credentials", exact: true })
     .click();
   await page
-    .getByLabel("Credential label", { exact: true })
+    .getByLabel("Key label", { exact: true })
     .fill("Desktop test agent");
   await page
     .getByRole("button", { name: "Create agent key", exact: true })
@@ -213,7 +213,7 @@ try {
   const key = await page.locator(".secret-result code").textContent();
   assert.ok(key.startsWith("at_"));
   await page
-    .getByLabel("Personal credential label", { exact: true })
+    .getByLabel("Token label", { exact: true })
     .fill("Management client test");
   await page
     .getByRole("button", { name: "Create personal MCP token", exact: true })

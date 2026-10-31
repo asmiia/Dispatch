@@ -61,7 +61,10 @@ export default function Settings({ onClose, onChanged, project, agents }) {
     [keyName, setKeyName] = useState(""),
     [password, setPassword] = useState(""),
     [currentPassword, setCurrentPassword] = useState(""),
-    [delUser, setDelUser] = useState("");
+    [delUser, setDelUser] = useState(""),
+    [newAgent, setNewAgent] = useState(""),
+    [newProgram, setNewProgram] = useState(""),
+    [newModel, setNewModel] = useState("");
   async function load(id = team) {
     try {
       const d = await api("settings" + (id ? "?team=" + id : ""));
@@ -99,6 +102,44 @@ export default function Settings({ onClose, onChanged, project, agents }) {
       return result;
     } catch (e) {
       setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function createAgentKey(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      let agentName = keyAgent || agents[0]?.name;
+      if (!agentName || keyAgent === "__new") {
+        agentName = newAgent.trim();
+        await api("agents", {
+          project_key: project,
+          name: agentName,
+          program: newProgram.trim() || "agent",
+          model: newModel.trim() || "unknown",
+        });
+      }
+      const made = await api("settings/key", {
+        project_key: project,
+        agent_name: agentName,
+        name: keyName,
+        days: 30,
+      });
+      setSecret(made.token);
+      setCopied(false);
+      setNotice("Key created. Copy it now: it is only shown once.");
+      setNewAgent("");
+      setNewProgram("");
+      setNewModel("");
+      setKeyName("");
+      setKeyAgent(agentName);
+      await load();
+      await onChanged();
+    } catch (err) {
+      setError(err.message);
     } finally {
       setBusy(false);
     }
@@ -160,6 +201,31 @@ export default function Settings({ onClose, onChanged, project, agents }) {
             ].map(([group, items]) => (
               <div className="settings-group" key={group}>
                 <span className="settings-group-label">{group}</span>
+                {group === "Team" && data && (
+                  <div className="nav-team">
+                    {data.teams.length > 1 ? (
+                      <Select
+                        aria-label="Selected team"
+                        value={team}
+                        onChange={(e) => {
+                          setTeam(e.target.value);
+                          load(e.target.value);
+                          setSecret("");
+                        }}
+                      >
+                        {data.teams.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name} · {t.role}
+                          </option>
+                        ))}
+                      </Select>
+                    ) : (
+                      <span className="nav-team-name" title="Your team">
+                        {data.teams[0]?.name} · {data.teams[0]?.role}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {items.map(([id, Icon, label]) => (
                   <button
                     key={id}
@@ -183,26 +249,6 @@ export default function Settings({ onClose, onChanged, project, agents }) {
               <Loader2 className="spin" size={20} />
             ) : (
               <>
-                <div className="settings-team">
-                  <label>
-                    Selected team
-                    <Select
-                      aria-label="Selected team"
-                      value={team}
-                      onChange={(e) => {
-                        setTeam(e.target.value);
-                        load(e.target.value);
-                        setSecret("");
-                      }}
-                    >
-                      {data.teams.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name} · {t.role}
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
-                </div>
                 {tab === "coordination" && (
                   <Coordination project={project} agents={agents} />
                 )}
@@ -390,12 +436,143 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                 )}
                 {tab === "keys" && (
                   <>
-                    <h3>Personal MCP credentials</h3>
+                    <h3>Agent credentials</h3>
                     <p className="muted">
-                      Use a personal token to manage this team through MCP with
-                      your current role. It cannot access another team or
-                      instance-wide administration. Keep it separate from
-                      agent-only keys.
+                      An agent key lets one agent use Dispatch over MCP. It only
+                      works for that agent and project, and cannot manage
+                      people, create projects or act as another agent. The key
+                      is shown once, right after you create it.
+                    </p>
+                    {!project ? (
+                      <p className="settings-warning">
+                        Create or select a project first, then come back to make
+                        an agent key.
+                      </p>
+                    ) : (
+                      <form onSubmit={createAgentKey}>
+                        <label htmlFor="key-agent">
+                          Agent in the current project
+                        </label>
+                        <Select
+                          id="key-agent"
+                          value={
+                            agents.length ? keyAgent || agents[0].name : "__new"
+                          }
+                          onChange={(e) => setKeyAgent(e.target.value)}
+                        >
+                          {agents.map((a) => (
+                            <option key={a.id} value={a.name}>
+                              {a.name}
+                            </option>
+                          ))}
+                          <option value="__new">+ New agent…</option>
+                        </Select>
+                        {(!agents.length || keyAgent === "__new") && (
+                          <>
+                            <label htmlFor="new-agent-name">
+                              New agent name
+                            </label>
+                            <input
+                              id="new-agent-name"
+                              value={newAgent}
+                              onChange={(e) => setNewAgent(e.target.value)}
+                              placeholder="e.g. ReviewBot"
+                              pattern="[A-Za-z][A-Za-z0-9_\-]*"
+                              title="Letters, numbers, - and _, starting with a letter"
+                              required
+                            />
+                            <label htmlFor="new-agent-program">
+                              Program (picks the agent's logo)
+                            </label>
+                            <input
+                              id="new-agent-program"
+                              list="agent-programs"
+                              value={newProgram}
+                              onChange={(e) => setNewProgram(e.target.value)}
+                              placeholder="claude-code, codex, gemini-cli, cursor…"
+                            />
+                            <datalist id="agent-programs">
+                              {[
+                                "claude-code",
+                                "codex",
+                                "gemini-cli",
+                                "cursor",
+                                "copilot",
+                                "windsurf",
+                              ].map((n) => (
+                                <option key={n} value={n} />
+                              ))}
+                            </datalist>
+                            <label htmlFor="new-agent-model">
+                              Model (optional)
+                            </label>
+                            <input
+                              id="new-agent-model"
+                              value={newModel}
+                              onChange={(e) => setNewModel(e.target.value)}
+                              placeholder="opus, gpt-5, gemini-pro…"
+                            />
+                          </>
+                        )}
+                        <label htmlFor="key-name">Key label</label>
+                        <input
+                          id="key-name"
+                          value={keyName}
+                          onChange={(e) => setKeyName(e.target.value)}
+                          placeholder="e.g. my laptop, CI runner"
+                          required
+                        />
+                        <p className="muted">Expires in 30 days.</p>
+                        <button
+                          className="primary"
+                          disabled={
+                            busy ||
+                            !["owner", "admin", "member"].includes(data.role)
+                          }
+                        >
+                          {!agents.length || keyAgent === "__new"
+                            ? "Create agent and key"
+                            : "Create agent key"}
+                        </button>
+                        {!["owner", "admin", "member"].includes(data.role) && (
+                          <p className="muted">
+                            Viewers can't create keys. Ask an admin to make you
+                            a member.
+                          </p>
+                        )}
+                      </form>
+                    )}
+                    <div className="settings-rows">
+                      {data.keys.map((k) => (
+                        <div className="settings-row" key={k.id}>
+                          <div>
+                            <strong>{k.name}</strong>
+                            <span>
+                              {k.agent_name} · {k.project_name}
+                              <br />
+                              {k.revoked_at
+                                ? "Revoked"
+                                : "Expires " +
+                                  new Date(k.expires_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <button
+                            className="subtle-button"
+                            disabled={!!k.revoked_at}
+                            onClick={() => run("key/revoke", { id: k.id })}
+                          >
+                            Revoke
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <hr />
+                    <h3>Personal MCP token</h3>
+                    <p className="muted">
+                      For a client that should manage this team (members,
+                      credentials) with your own role, not act as an agent. It
+                      cannot reach another team or instance administration. Most
+                      people only need an agent key above.
                     </p>
                     <form
                       onSubmit={(e) => {
@@ -407,9 +584,7 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                         });
                       }}
                     >
-                      <label htmlFor="personal-key-name">
-                        Personal credential label
-                      </label>
+                      <label htmlFor="personal-key-name">Token label</label>
                       <input
                         id="personal-key-name"
                         value={personalName}
@@ -439,84 +614,6 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                             onClick={() =>
                               run("personal-key/revoke", { id: k.id })
                             }
-                          >
-                            Revoke
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    <hr />
-                    <h3>Agent credentials</h3>
-                    <p className="muted">
-                      Each key can only use its assigned agent and project. It
-                      cannot manage people, create projects or act as another
-                      agent.
-                    </p>
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        run("key", {
-                          project_key: project,
-                          agent_name: keyAgent || agents[0]?.name,
-                          name: keyName,
-                          days: 30,
-                        });
-                      }}
-                    >
-                      <label htmlFor="key-name">Credential label</label>
-                      <input
-                        id="key-name"
-                        value={keyName}
-                        onChange={(e) => setKeyName(e.target.value)}
-                        placeholder="e.g. CI runner"
-                        required
-                      />
-                      <label htmlFor="key-agent">
-                        Agent in the current project
-                      </label>
-                      <Select
-                        id="key-agent"
-                        value={keyAgent || agents[0]?.name || ""}
-                        onChange={(e) => setKeyAgent(e.target.value)}
-                      >
-                        {agents.map((a) => (
-                          <option key={a.id} value={a.name}>
-                            {a.name}
-                          </option>
-                        ))}
-                      </Select>
-                      <p className="muted">
-                        Expires in 30 days. The full token is shown once.
-                      </p>
-                      <button
-                        className="primary"
-                        disabled={
-                          busy ||
-                          !agents.length ||
-                          !["owner", "admin", "member"].includes(data.role)
-                        }
-                      >
-                        Create agent key
-                      </button>
-                    </form>
-                    <div className="settings-rows">
-                      {data.keys.map((k) => (
-                        <div className="settings-row" key={k.id}>
-                          <div>
-                            <strong>{k.name}</strong>
-                            <span>
-                              {k.agent_name} · {k.project_name}
-                              <br />
-                              {k.revoked_at
-                                ? "Revoked"
-                                : "Expires " +
-                                  new Date(k.expires_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <button
-                            className="subtle-button"
-                            disabled={!!k.revoked_at}
-                            onClick={() => run("key/revoke", { id: k.id })}
                           >
                             Revoke
                           </button>

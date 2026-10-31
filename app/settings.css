@@ -648,3 +648,43 @@
   width: auto;
   flex: 0 0 auto;
 }
+
+/* A freshly created key or code stays in view however long the page is. */
+.settings-content .secret-result {
+  position: sticky;
+  bottom: 8px;
+  z-index: 5;
+  background: var(--c-0a0a0a);
+  border: 1px solid var(--t-67c795);
+  box-shadow: 0 10px 40px var(--c-000000bb);
+}
+.settings-content .secret-result code {
+  font-size: 13px;
+  user-select: all;
+}
+.settings-warning {
+  margin: 12px 0;
+}
+
+/* The team switcher lives in the sidebar, under the Team heading. */
+.nav-team {
+  padding: 0 4px 8px;
+}
+.nav-team .select-trigger {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+}
+.nav-team-name {
+  display: block;
+  padding: 4px 8px 6px;
+  font-size: 12.5px;
+  color: var(--t-a1a1a1);
+}
+@media (max-width: 760px) {
+  .nav-team {
+    min-width: 170px;
+    padding: 0;
+  }
+}
