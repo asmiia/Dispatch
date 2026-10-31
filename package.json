@@ -19,7 +19,9 @@
     "backup:list": "node scripts/backup.mjs list",
     "backup:verify": "node scripts/backup.mjs verify",
     "restore": "node scripts/backup.mjs restore",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "demo": "node scripts/demo.mjs",
+    "social": "node scripts/social.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
@@ -37,6 +39,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
+    "gifenc": "^1.0.3",
+    "pngjs": "^7.0.0",
     "prettier": "^3.9.10"
   }
 }
