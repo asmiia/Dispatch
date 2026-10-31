@@ -13,6 +13,7 @@ import {
   Folder,
   Terminal,
   ArrowUpRight,
+  Settings as Gear,
   Settings2,
   RefreshCw,
   Loader2,
@@ -24,7 +25,6 @@ import {
 import Settings from "./settings";
 import Login from "./login";
 import AgentAvatar, { logoFor } from "./agent-avatar";
-import UserAvatar from "./user-avatar";
 import Connect from "./connect";
 import Conversation from "./conversation";
 import Composer from "./composer";
@@ -455,7 +455,8 @@ export default function Workspace() {
           onClick={() => compose()}
         >
           <Plus size={16} />
-          Compose message<span>N</span>
+          <span className="nav-label">Compose message</span>
+          <span className="key">N</span>
         </button>
         <div className="section-label">WORKSPACE</div>
         <nav>
@@ -524,25 +525,16 @@ export default function Workspace() {
         </div>
         <div className="sidebar-bottom">
           <button onClick={() => setModal("connect")}>
-            <Terminal size={15} />
-            Connect an agent
-            <ArrowUpRight size={13} />
+            <Terminal size={16} />
+            <span className="nav-label">Connect an agent</span>
+            <ArrowUpRight size={13} className="nav-arrow" />
           </button>
           <button
             className="settings-open"
             onClick={() => setModal("settings")}
           >
-            {user ? (
-              <UserAvatar
-                id={user.id}
-                name={user.name}
-                v={user.avatar_v}
-                size={20}
-              />
-            ) : (
-              <Settings2 size={15} />
-            )}
-            Settings
+            <Gear size={16} />
+            <span className="nav-label">Settings</span>
           </button>
         </div>
       </aside>

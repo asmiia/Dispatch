@@ -1557,3 +1557,54 @@ a.subtle-button {
 .sidebar.compact .sidebar-bottom .settings-open > * {
   margin: 0;
 }
+/* Compact rail: one icon size, one button size. */
+.sidebar.compact .nav-arrow {
+  display: none;
+}
+.sidebar.compact nav button svg,
+.sidebar.compact .sidebar-bottom button svg:not(.nav-arrow),
+.sidebar.compact .compose svg {
+  width: 19px;
+  height: 19px;
+  flex: none;
+}
+.sidebar.compact .sidebar-bottom {
+  font-size: 14px;
+}
+.sidebar.compact .sidebar-bottom button {
+  font-size: 14px;
+}
+.sidebar.compact .compose {
+  font-size: 14px;
+}
+.sidebar.compact .compose span {
+  display: none;
+}
+.sidebar.compact .collapse-toggle svg {
+  width: 19px;
+  height: 19px;
+}
+.sidebar.compact .project-switch .project-avatar {
+  font-size: 14px;
+}
+.compose .nav-label {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  color: inherit;
+}
+.sidebar.compact .compose .key {
+  display: none;
+}
+.sidebar.compact .project-switch {
+  display: none;
+}
+.sidebar.compact .compose {
+  display: grid;
+  place-items: center;
+}
+.sidebar.compact .compose svg {
+  margin: 0;
+  display: block;
+}
