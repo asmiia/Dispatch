@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
-FROM node:24-slim AS build
+FROM node:25-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev
 
-FROM node:24-slim
+FROM node:25-slim
 ENV NODE_ENV=production \
     DISPATCH_DATA_DIR=/data \
     DISPATCH_BACKUP_DIR=/backups \
