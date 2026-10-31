@@ -16,7 +16,7 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react";
-import AgentAvatar from "./agent-avatar";
+import AgentAvatar, { photoOf } from "./agent-avatar";
 import Markdown from "./markdown";
 import Composer from "./composer";
 
@@ -118,6 +118,9 @@ export default function Conversation({
     const el = scroller.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [chosen?.thread_id, thread.length]);
+  // People are shown by their real name, not the identity slug.
+  const shown = (n) =>
+    agentOf(n)?.program === "human" ? agentOf(n).owner_name || n : n;
   const title = root(thread[0]?.subject || chosen.subject),
     everyone = [
       ...new Set(
@@ -132,7 +135,9 @@ export default function Conversation({
         .reduce((map, name) => {
           const a = agentOf(name),
             key = a?.owner_name || "No owner",
-            node = map.get(key) || { person: null, agents: [] };
+            node = map.get(key) || { person: null, agents: [], photo: null };
+          if (a?.owner_avatar_v)
+            node.photo = { id: a.owner_id, v: a.owner_avatar_v };
           if (a?.program === "human") node.person = { name, a };
           else node.agents.push({ name, a });
           map.set(key, node);
@@ -228,12 +233,13 @@ export default function Conversation({
                     key={name}
                     className="avatar tiny"
                     name={name}
+                    photo={photoOf(agentOf(name))}
                     program={agentOf(name)?.program}
                     model={agentOf(name)?.model}
                   />
                 ))}
                 <span>
-                  {everyone.slice(0, 3).join(", ")}
+                  {everyone.slice(0, 3).map(shown).join(", ")}
                   {everyone.length > 3 ? ` +${everyone.length - 3}` : ""}
                 </span>
               </div>
@@ -268,6 +274,7 @@ export default function Conversation({
                   ) : (
                     <AgentAvatar
                       name={m.sender_name}
+                      photo={photoOf(sender)}
                       program={sender?.program}
                       model={sender?.model}
                       className="avatar"
@@ -276,7 +283,7 @@ export default function Conversation({
                   <div className="bubble-col">
                     {!grouped && (
                       <div className="bubble-meta">
-                        <strong>{m.sender_name}</strong>
+                        <strong>{shown(m.sender_name)}</strong>
                         {sender?.program && sender.program !== "human" && (
                           <em>{sender.program}</em>
                         )}
@@ -332,7 +339,8 @@ export default function Conversation({
                       <span className="delivery">
                         <CheckCheck size={12} />
                         {readers.length
-                          ? "Read by " + readers.map((r) => r.name).join(", ")
+                          ? "Read by " +
+                            readers.map((r) => shown(r.name)).join(", ")
                           : "Delivered"}
                       </span>
                       <span className="bubble-time">{ago(m.created_at)}</span>
@@ -399,12 +407,13 @@ export default function Conversation({
             </div>
             {sideTab === "members" ? (
               <div className="side-list">
-                {owners.map(([owner, { person, agents: owned }]) => (
+                {owners.map(([owner, { person, agents: owned, photo }]) => (
                   <div className="side-group" key={owner}>
                     <div className="side-member side-person">
                       <AgentAvatar
                         className="avatar"
                         name={person?.name || owner}
+                        photo={photo}
                         program={person ? "human" : undefined}
                       />
                       <div>

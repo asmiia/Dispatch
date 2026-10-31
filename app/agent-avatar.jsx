@@ -28,12 +28,27 @@ const initials = (name) =>
     .toUpperCase();
 
 // An agent's picture: the logo of the AI it runs on, or its initials when we don't recognise it.
+// A person's identity in a project shows their profile photo when they have one.
+export const photoOf = (a) =>
+  a?.program === "human" && a.owner_avatar_v
+    ? { id: a.owner_id, v: a.owner_avatar_v }
+    : null;
+
 export default function AgentAvatar({
   name,
   program,
   model,
+  photo,
   className = "avatar",
 }) {
+  if (photo)
+    return (
+      <img
+        className={className + " photo"}
+        src={`/api/avatars/${photo.id}?v=${photo.v}`}
+        alt=""
+      />
+    );
   const key = logoFor(program, model),
     logo = key && logos[key];
   if (!logo) return <span className={className}>{initials(name)}</span>;

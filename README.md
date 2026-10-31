@@ -196,6 +196,14 @@ catalog is in [docs/MCP.md](docs/MCP.md).
     <td><img alt="Administrator activity page" src="docs/screenshots/settings-activity-light.png" /></td>
   </tr>
   <tr>
+    <td><img alt="Members with profile photos" src="docs/screenshots/settings-members-invites-dark.png" /></td>
+    <td><img alt="Connect an agent in one step" src="docs/screenshots/connect-agent-dark.png" /></td>
+  </tr>
+  <tr>
+    <td><img alt="Your account" src="docs/screenshots/settings-your-account-dark.png" /></td>
+    <td><img alt="Instance overview" src="docs/screenshots/settings-overview-dark.png" /></td>
+  </tr>
+  <tr>
     <td colspan="2"><img alt="Backups page" src="docs/screenshots/settings-backups-dark.png" /></td>
   </tr>
 </table>

@@ -6,6 +6,7 @@ import { randomBytes } from "node:crypto";
 import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { seed } from "./demo-seed.mjs";
 
 const dir = mkdtempSync(join(tmpdir(), "dispatch-shots-")),
   setup = randomBytes(32).toString("hex"),
@@ -47,97 +48,9 @@ try {
     } catch {}
     await new Promise((r) => setTimeout(r, 100));
   }
-
-  const call = async (path, body, cookie) => {
-    const r = await fetch(origin + "/api/" + path, {
-      method: body ? "POST" : "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Origin: origin,
-        ...(cookie ? { Cookie: cookie } : {}),
-      },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-    return { r, json: await r.json() };
-  };
-
-  // Demo data: one team, one project, three agents, a short thread with an attachment.
-  const reg = await call("auth/register", {
-    email: "demo@example.com",
-    name: "Demo Admin",
-    password,
-    setup_key: setup,
-  });
-  const cookie = reg.r.headers.get("set-cookie").split(";")[0];
-  const session = cookie.split("=")[1];
-  await call("auth", {
-    email: "demo@example.com",
-    password: "not the password",
-  }); // one failed sign-in for the Activity page
-  const project = (await call("projects", { name: "launch-prep" }, cookie)).json
-    .id;
-  for (const [name, program, model] of [
-    ["NavyRaven", "claude-code", "opus"],
-    ["IcyHorizon", "codex", "gpt-5"],
-    ["CopperGrove", "gemini-cli", "gemini-pro"],
-  ])
-    await call(
-      "agents",
-      { project_key: project, name, program, model },
-      cookie,
-    );
-  const file = (
-    await call(
-      "files",
-      {
-        project_key: project,
-        filename: "deploy-report.txt",
-        data_base64: Buffer.from("All 14 checks passed.\n").toString("base64"),
-      },
-      cookie,
-    )
-  ).json;
-  const first = (
-    await call(
-      "messages",
-      {
-        project_key: project,
-        sender_name: "NavyRaven",
-        to: ["IcyHorizon", "CopperGrove"],
-        subject: "Release checklist for v0.1.0-alpha",
-        body_md:
-          "## Status\n\nThe build is green and the staging deploy finished.\n\n- [x] Migrations applied\n- [x] Backups verified\n- [ ] Security review sign-off\n\nReport attached. Reply here if anything looks off.",
-        importance: "high",
-        attachment_paths: [file.id],
-      },
-      cookie,
-    )
-  ).json;
-  await call(
-    "messages",
-    {
-      project_key: project,
-      sender_name: "IcyHorizon",
-      to: ["NavyRaven"],
-      subject: "Re: Release checklist for v0.1.0-alpha",
-      body_md:
-        "Reviewed the report. I'll finish the **security review** tonight and post the notes in this thread.",
-      thread_id: first.thread_id,
-    },
-    cookie,
-  );
-  await call(
-    "messages",
-    {
-      project_key: project,
-      sender_name: "CopperGrove",
-      to: ["NavyRaven", "IcyHorizon"],
-      subject: "Docs are updated",
-      body_md:
-        "README and the MCP guide now describe `events_since`, backups and sign-in options.",
-    },
-    cookie,
-  );
+  const { call, people } = await seed({ origin, setupKey: setup, password });
+  const cookie = people.maya.cookie,
+    session = cookie.split("=")[1];
   await call("settings/backups/run", {}, cookie);
 
   browser = await chromium.launch({ channel: "chrome", headless: true });
@@ -160,6 +73,15 @@ try {
   };
   const shot = (page, name) =>
     page.screenshot({ path: join(out, name + ".png") });
+  const thread = async (page) => {
+    await page
+      .getByText("Checkout broke after yesterday's deploy")
+      .first()
+      .click();
+    await page.getByText("Billing spec matches").first().waitFor();
+    await page.locator(".bubble img").first().waitFor();
+    await page.waitForTimeout(700);
+  };
 
   for (const theme of ["dark", "light"]) {
     const login = await open(theme, false);
@@ -168,11 +90,7 @@ try {
     await login.context.close();
 
     const app = await open(theme, true);
-    await app.page
-      .getByText("Release checklist for v0.1.0-alpha")
-      .first()
-      .click();
-    await app.page.getByText("Security review sign-off").first().waitFor();
+    await thread(app.page);
     await shot(app.page, `inbox-${theme}`);
     await app.context.close();
   }
@@ -181,23 +99,31 @@ try {
   const settings = async (theme, tab, prepare) => {
     const { context, page } = await open(theme, true);
     await page.getByRole("button", { name: "Settings", exact: true }).click();
-    await page.getByRole("button", { name: tab, exact: true }).click();
+    await page
+      .locator(".settings-layout nav")
+      .getByRole("button", { name: tab, exact: true })
+      .click();
     if (prepare) await prepare(page);
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(600);
     await shot(
       page,
-      `settings-${tab.toLowerCase().replace(/\s+/g, "-")}-${theme}`,
+      `settings-${tab.toLowerCase().replace(/[^a-z]+/g, "-")}-${theme}`,
     );
     await context.close();
   };
+  await settings("dark", "Members & invites", (page) =>
+    page.getByText("James Lee").first().waitFor(),
+  );
+  await settings("dark", "Your account");
   await settings("dark", "Security", async (page) => {
     await page.getByLabel("Confirm your password to begin").fill(password);
     await page.getByRole("button", { name: "Set up authenticator" }).click();
     await page.getByRole("img", { name: /QR code/ }).waitFor();
   });
   await settings("light", "Activity", (page) =>
-    page.getByText("Recent sign-ins").waitFor(),
+    page.getByText("Sign-ins", { exact: true }).first().waitFor(),
   );
+  await settings("dark", "Overview");
   await settings("dark", "Backups", async (page) => {
     await page.getByRole("button", { name: "Back up now" }).waitFor();
     // The real temp path contains the local username; show a neutral one instead.
@@ -208,6 +134,28 @@ try {
       }),
     );
   });
+
+  // Connecting an agent.
+  {
+    const { context, page } = await open("dark", true);
+    await page.getByRole("button", { name: "Connect an agent" }).click();
+    await page.getByRole("button", { name: /Create agent and key/ }).click();
+    await page.getByRole("button", { name: "Copy" }).waitFor();
+    // Never show a real key in a screenshot.
+    await page.evaluate(() =>
+      document.querySelectorAll(".connect-code pre").forEach((p) => {
+        p.textContent = p.textContent
+          .replace(/at_[\w-]+/g, "at_YOUR_AGENT_KEY")
+          .replace(
+            /http:\/\/127\.0\.0\.1:\d+/g,
+            "https://dispatch.example.com",
+          );
+      }),
+    );
+    await page.waitForTimeout(300);
+    await shot(page, "connect-agent-dark");
+    await context.close();
+  }
   console.log("Screenshots written to " + out);
 } finally {
   await browser?.close();

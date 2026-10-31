@@ -11,6 +11,7 @@ import { randomBytes } from "node:crypto";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { seed } from "./demo-seed.mjs";
 
 const dir = mkdtempSync(join(tmpdir(), "dispatch-demo-")),
   setup = randomBytes(32).toString("hex"),
@@ -20,7 +21,7 @@ const dir = mkdtempSync(join(tmpdir(), "dispatch-demo-")),
   framesDir = process.argv.includes("--frames")
     ? resolve(process.argv[process.argv.indexOf("--frames") + 1])
     : null,
-  size = { width: 1040, height: 600 };
+  size = { width: 1280, height: 720 };
 if (framesDir) mkdirSync(framesDir, { recursive: true });
 
 const server = spawn(
@@ -90,47 +91,15 @@ try {
     return JSON.parse(out.result.content[0].text);
   };
 
-  const reg = await call("auth/register", {
-    email: "demo@example.com",
-    name: "Demo Admin",
+  const { people, agents, project } = await seed({
+    origin,
+    setupKey: setup,
     password,
-    setup_key: setup,
   });
-  const cookie = reg.r.headers.get("set-cookie").split(";")[0],
-    session = cookie.split("=")[1];
-  const project = (await call("projects", { name: "launch-prep" }, cookie)).json
-    .id;
-  for (const [name, program, model] of [
-    ["NavyRaven", "claude-code", "opus"],
-    ["IcyHorizon", "codex", "gpt-5"],
-    ["CopperGrove", "gemini-cli", "gemini-pro"],
-  ])
-    await call(
-      "agents",
-      { project_key: project, name, program, model },
-      cookie,
-    );
-  const key = async (agent_name) =>
-    (
-      await call(
-        "settings/key",
-        { project_key: project, agent_name, name: "demo", days: 1 },
-        cookie,
-      )
-    ).json.token;
-  const navy = await key("NavyRaven");
-  // Older traffic so the inbox is not empty.
-  await call(
-    "messages",
-    {
-      project_key: project,
-      sender_name: "CopperGrove",
-      to: ["IcyHorizon"],
-      subject: "Docs are updated",
-      body_md: "README and the MCP guide are up to date.",
-    },
-    cookie,
-  );
+  const cookie = people.maya.cookie,
+    session = cookie.split("=")[1],
+    me = people.maya.identity,
+    navy = agents.NavyRaven.token;
 
   browser = await chromium.launch({ channel: "chrome", headless: true });
   const context = await browser.newContext({ viewport: size });
@@ -158,7 +127,7 @@ try {
     }, html);
   const toBottom = () =>
     page
-      .locator(".thread-scroll")
+      .locator(".chat-scroll")
       .evaluate((e) => e.scrollTo({ top: e.scrollHeight }));
   const snap = async (delay) => {
     const png = await page.screenshot();
@@ -170,32 +139,31 @@ try {
       );
   };
 
-  // 1. The workspace, viewed as IcyHorizon.
-  await page.locator(".agent-list").getByText("IcyHorizon").first().click();
-  await page.getByText("Docs are updated").first().waitFor();
+  // 1. The workspace: one inbox for people and agents.
+  await page.getByText("Weekly digest").first().waitFor();
   await caption("Agents and people share one inbox");
   await page.waitForTimeout(400);
   await snap(2200);
 
-  // 2. An agent sends a message over MCP; it appears (the UI refreshes on its own).
+  // 2. An agent sends a message over MCP; it appears live.
   await caption(
     "NavyRaven sends a message over MCP: <code>send_message</code>",
   );
   await snap(1400);
-  const sent = await mcp(navy, "send_message", {
+  await mcp(navy, "send_message", {
     project_key: project,
     sender_name: "NavyRaven",
-    to: ["IcyHorizon"],
+    to: [me],
     subject: "Staging deploy is green. Ready to release?",
     body_md:
-      "## Status\n\nThe staging deploy finished and all checks passed.\n\n- Migrations applied\n- Backups verified\n\nShall I tag the release?",
+      "## Status\n\nThe staging deploy finished and all checks passed.\n\n- Migrations applied\n- Backups verified\n\nShall I tag the release? :rocket:",
     importance: "high",
   });
   await page
     .getByText("Staging deploy is green")
     .first()
     .waitFor({ timeout: 20000 });
-  await caption("It lands in the team inbox");
+  await caption("It lands in the team inbox, live");
   await page.waitForTimeout(300);
   await snap(2200);
 
@@ -203,13 +171,12 @@ try {
   await page.getByText("Staging deploy is green").first().click();
   await page.getByText("Shall I tag the release?").first().waitFor();
   await caption("People read the same conversation the agents do");
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(500);
   await snap(2600);
 
-  // 4. Reply from the web UI, typed live.
-  await page.getByRole("button", { name: "Reply", exact: true }).click();
-  await page.locator("#body").waitFor();
-  await caption("You reply from the web app");
+  // 4. Reply from the web app, typed live. It is sent as you, not as an agent.
+  await page.locator("#body").click();
+  await caption("You reply from the web app, as yourself");
   await snap(900);
   const reply =
     "Looks good. Tag it, and post the release notes in this thread.";
@@ -217,11 +184,11 @@ try {
     await page.locator("#body").pressSequentially(reply.slice(i, i + 7));
     await snap(i + 7 >= reply.length ? 1200 : 220);
   }
-  await page.getByRole("button", { name: "Send message", exact: true }).click();
-  await page.getByText("2 messages in this thread", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Send reply", exact: true }).click();
+  await page.getByText("Tag it, and post the release notes").first().waitFor();
   await caption("Sent");
   await toBottom();
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(400);
   await snap(1500);
 
   // 5. The agent picks it up over MCP; read receipts update.
@@ -234,7 +201,7 @@ try {
   const list = Array.isArray(inbox)
     ? inbox
     : Object.values(inbox).find(Array.isArray) || [];
-  const incoming = list.find((m) => m.sender_name === "IcyHorizon");
+  const incoming = list.find((m) => m.sender_name === me);
   if (!incoming)
     throw new Error(
       "Agent inbox did not contain the reply: " +
@@ -250,12 +217,11 @@ try {
     .waitFor({ timeout: 20000 });
   await caption("Read receipts update for everyone");
   await toBottom();
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(400);
   await snap(2400);
 
   await caption("Dispatch: self-hosted, one process, MCP-native");
   await snap(2800);
-  void sent;
 
   // Encode. One palette for every frame keeps the file small.
   const decoded = frames.map((f) => PNG.sync.read(f.png));

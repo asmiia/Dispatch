@@ -24,7 +24,8 @@ import {
 } from "lucide-react";
 import Settings from "./settings";
 import Login from "./login";
-import AgentAvatar, { logoFor } from "./agent-avatar";
+import AgentAvatar, { logoFor, photoOf } from "./agent-avatar";
+import { emojify } from "node-emoji";
 import Connect from "./connect";
 import Conversation from "./conversation";
 import Composer from "./composer";
@@ -62,7 +63,7 @@ const when = (iso) => {
 };
 // One-line plain-text preview of a Markdown body.
 const preview = (md) =>
-  md
+  emojify(md)
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/^\s*(?:[-*+]|\d+\.)\s+(?:\[[ xX]\]\s+)?/gm, "")
@@ -592,12 +593,17 @@ export default function Workspace() {
                 >
                   <AgentAvatar
                     name={m.sender_name}
+                    photo={photoOf(agentOf(m.sender_name))}
                     program={agentOf(m.sender_name)?.program}
                     model={agentOf(m.sender_name)?.model}
                   />
                   <div className="row-main">
                     <div className="row-top">
-                      <strong>{m.sender_name}</strong>
+                      <strong>
+                        {agentOf(m.sender_name)?.program === "human"
+                          ? agentOf(m.sender_name).owner_name || m.sender_name
+                          : m.sender_name}
+                      </strong>
                       {starred.has(m.thread_id) && (
                         <Star size={12} className="row-star" />
                       )}
@@ -618,7 +624,14 @@ export default function Workspace() {
                     <p>{preview(m.body)}</p>
                     <div className="row-foot">
                       <span>
-                        to {m.recipients.map((r) => r.name).join(", ")}
+                        to{" "}
+                        {m.recipients
+                          .map((r) =>
+                            agentOf(r.name)?.program === "human"
+                              ? agentOf(r.name).owner_name || r.name
+                              : r.name,
+                          )
+                          .join(", ")}
                       </span>
                       {m.attachments.length > 0 && (
                         <span className="row-chip">
