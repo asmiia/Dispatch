@@ -46,6 +46,48 @@ export async function GET(request, { params }) {
       return await oauthRoute(request, sec, acc, path[2], path[3], url);
     const actor = guard(request),
       db = new ScopedMail(sec, actor);
+    if (path.join("/") === "stream") {
+      // Server-sent events: only a counter is sent, the page then refetches what it is allowed to see.
+      const latest = () =>
+        sec.db.prepare("SELECT COALESCE(MAX(rowid),0) n FROM audit").get().n;
+      let timer,
+        last = latest(),
+        beat = 0;
+      const body = new ReadableStream({
+        start(controller) {
+          const enc = new TextEncoder();
+          controller.enqueue(enc.encode("retry: 3000\n\n"));
+          timer = setInterval(() => {
+            try {
+              const n = latest();
+              if (n !== last) {
+                last = n;
+                controller.enqueue(enc.encode(`data: ${n}\n\n`));
+              } else if (++beat % 15 === 0)
+                controller.enqueue(enc.encode(": keepalive\n\n"));
+            } catch {
+              clearInterval(timer);
+            }
+          }, 1000);
+          request.signal.addEventListener("abort", () => {
+            clearInterval(timer);
+            try {
+              controller.close();
+            } catch {}
+          });
+        },
+        cancel() {
+          clearInterval(timer);
+        },
+      });
+      return new Response(body, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-store",
+          "X-Accel-Buffering": "no",
+        },
+      });
+    }
     if (path.join("/") === "me") {
       const user = sec.human(actor);
       return Response.json({

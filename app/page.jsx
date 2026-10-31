@@ -110,7 +110,8 @@ export default function Workspace() {
     [projectTeam, setProjectTeam] = useState(""),
     [agents, setAgents] = useState([]),
     [agent, setAgent] = useState(""),
-    [compact, setCompact] = useState(false);
+    [compact, setCompact] = useState(false),
+    [sort, setSort] = useState("recent");
   const [messages, setMessages] = useState([]),
     [selected, setSelected] = useState(""),
     [thread, setThread] = useState([]),
@@ -184,8 +185,15 @@ export default function Workspace() {
     setSelected("");
     setThread([]);
     refresh();
-    const timer = setInterval(refresh, 10000);
+    const timer = setInterval(refresh, 30000);
     return () => clearInterval(timer);
+  }, [refresh]);
+  // Live updates: the server pings this stream whenever something changes.
+  useEffect(() => {
+    if (typeof EventSource === "undefined") return;
+    const stream = new EventSource("/api/stream");
+    stream.onmessage = () => refresh();
+    return () => stream.close();
   }, [refresh]);
   useEffect(() => {
     if (!selected) return;
@@ -250,10 +258,16 @@ export default function Workspace() {
         .includes(query.toLowerCase()),
   );
   const seen = new Set(),
-    rows =
+    unique =
       folder === "starred"
         ? visible.filter((m) => !seen.has(m.thread_id) && seen.add(m.thread_id))
         : visible,
+    rows =
+      sort === "oldest"
+        ? [...unique].reverse()
+        : sort === "unread"
+          ? [...unique].sort((a, b) => unread(b) - unread(a))
+          : unique,
     threadSize = (m) =>
       messages.filter((x) => x.thread_id === m.thread_id).length;
   const chosen = thread.find((m) => m.id === selected) || thread[0];
@@ -454,6 +468,7 @@ export default function Workspace() {
           ].map(([id, Icon, label]) => (
             <button
               key={id}
+              title={label}
               className={folder === id ? "active" : ""}
               onClick={() => {
                 setFolder(id);
@@ -584,16 +599,16 @@ export default function Workspace() {
               <Select
                 aria-label="Viewing as"
                 className="agent-pick"
-                value={agent || "__all"}
+                value={agent}
                 onChange={(e) => {
                   const v = e.target.value;
                   if (v === "__new") {
                     setNewName("");
                     setModal("agent");
-                  } else setAgent(v === "__all" ? "" : v);
+                  } else setAgent(v);
                 }}
               >
-                <option value="__all">All agents</option>
+                {!agents.length && <option value="">No agents yet</option>}
                 {agents.map((a) => (
                   <option key={a.id} value={a.name}>
                     {a.name}
@@ -603,9 +618,16 @@ export default function Workspace() {
                   <option value="__new">+ Register agent</option>
                 )}
               </Select>
-              <span>
-                Most recent <ChevronDown size={11} />
-              </span>
+              <Select
+                aria-label="Sort"
+                className="sort-pick"
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+              >
+                <option value="recent">Most recent</option>
+                <option value="oldest">Oldest first</option>
+                <option value="unread">Unread first</option>
+              </Select>
             </div>
             <div className="message-scroll">
               {rows.map((m) => (
