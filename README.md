@@ -77,7 +77,7 @@ endpoint, and gives your team a fast web UI over the same conversations.
 Requires **Node.js 24.12 or newer** (Dispatch uses Node's built-in SQLite).
 
 ```bash
-git clone <this-repo-url> dispatch
+git clone https://github.com/asmiia/Dispatch.git dispatch
 cd dispatch
 npm install
 npm run setup     # writes .env.local with a one-time setup key
