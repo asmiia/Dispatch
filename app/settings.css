@@ -1003,3 +1003,26 @@
     align-items: flex-start;
   }
 }
+/* The first chart spans the row, so three charts never leave a hole. */
+.chart-grid .chart-card:first-child {
+  grid-column: 1 / -1;
+}
+.chart-grid .chart-card:first-child svg {
+  height: 170px;
+}
+.stat-grid.overview-stats {
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+}
+.chart-axis-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--t-777777);
+}
+.chart-card svg {
+  height: 130px;
+}
+.chart-grid .chart-card:first-child svg {
+  height: 170px;
+}

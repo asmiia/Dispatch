@@ -45,7 +45,7 @@ function Chart({
         <span>{note || `${total.toLocaleString()} in 30 days`}</span>
       </header>
       <svg
-        viewBox={`0 0 ${w} ${h + 18}`}
+        viewBox={`0 0 ${w} ${h}`}
         role="img"
         aria-label={title}
         preserveAspectRatio="none"
@@ -86,13 +86,11 @@ function Chart({
             </g>
           );
         })}
-        <text x="0" y={h + 14} className="chart-axis">
-          {short(days[0])}
-        </text>
-        <text x={w} y={h + 14} textAnchor="end" className="chart-axis">
-          {short(days[days.length - 1])}
-        </text>
       </svg>
+      <div className="chart-axis-row">
+        <span>{short(days[0])}</span>
+        <span>{short(days[days.length - 1])}</span>
+      </div>
     </section>
   );
 }
@@ -152,7 +150,7 @@ export default function Overview({ api }) {
   return (
     <>
       <h3>Overview</h3>
-      <div className="stat-grid">
+      <div className="stat-grid overview-stats">
         {cards.map(([label, value, sub]) => (
           <div className="stat" key={label}>
             <strong>{value}</strong>
