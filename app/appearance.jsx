@@ -1,5 +1,5 @@
 "use client";
-import { ThemeSwitch } from "./theme-toggle";
+import { ThemeCards } from "./theme-toggle";
 
 export default function Appearance() {
   return (
@@ -7,9 +7,9 @@ export default function Appearance() {
       <h3>Appearance</h3>
       <p className="muted">Choose light, dark, or follow your device.</p>
       <div className="settings-grid">
-        <section className="card">
+        <section className="card wide">
           <h4>Theme</h4>
-          <ThemeSwitch />
+          <ThemeCards />
         </section>
       </div>
     </>

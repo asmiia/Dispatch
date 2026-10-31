@@ -83,3 +83,32 @@ export function ThemeButton() {
     </button>
   );
 }
+
+// Big preview tiles for the Appearance page.
+export function ThemeCards() {
+  const [pref, choose] = useTheme();
+  return (
+    <div className="theme-cards" role="radiogroup" aria-label="Theme">
+      {options.map(([id, Icon, label]) => (
+        <button
+          key={id}
+          type="button"
+          role="radio"
+          aria-checked={pref === id}
+          className={"theme-card" + (pref === id ? " active" : "")}
+          onClick={() => choose(id)}
+        >
+          <span className={"theme-preview " + id}>
+            <i />
+            <i />
+            <i />
+          </span>
+          <span className="theme-card-label">
+            <Icon size={14} />
+            {label}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
