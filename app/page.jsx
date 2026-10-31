@@ -29,6 +29,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Settings from "./settings";
 import Login from "./login";
+import AgentAvatar, { logoFor } from "./agent-avatar";
 function DispatchMark({ size = 20 }) {
   return (
     <svg
@@ -59,14 +60,6 @@ const preview = (md) =>
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 125);
-const initials = (name) =>
-  (name || "?")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .split(/[ _-]/)
-    .map((s) => s[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 const date = (value) =>
   new Date(value).toLocaleString("en", {
     month: "short",
@@ -207,6 +200,7 @@ export default function Workspace() {
     canManage =
       !!user?.site_admin ||
       user?.teams?.some((t) => ["owner", "admin"].includes(t.role));
+  const agentOf = (name) => agents.find((a) => a.name === name);
   const unread = (m) =>
     m.recipients.some((r) => (!agent || r.name === agent) && !r.read_at);
   const visible = messages.filter(
@@ -460,7 +454,16 @@ export default function Workspace() {
               className={agent === a.name ? "current" : ""}
               onClick={() => setAgent(a.name)}
             >
-              <span className="presence" />
+              {logoFor(a.program, a.model) ? (
+                <AgentAvatar
+                  className="avatar tiny"
+                  name={a.name}
+                  program={a.program}
+                  model={a.model}
+                />
+              ) : (
+                <span className="presence" />
+              )}
               {a.name}
               <span className="agent-program">{a.program}</span>
             </button>
@@ -552,9 +555,12 @@ export default function Workspace() {
                 >
                   <div className="message-line">
                     <span className="sender">
-                      <span className="avatar small">
-                        {initials(m.sender_name)}
-                      </span>
+                      <AgentAvatar
+                        className="avatar small"
+                        name={m.sender_name}
+                        program={agentOf(m.sender_name)?.program}
+                        model={agentOf(m.sender_name)?.model}
+                      />
                       {m.sender_name}
                     </span>
                     <time>
@@ -672,9 +678,11 @@ export default function Workspace() {
                   {thread.map((m) => (
                     <article className="message-detail" key={m.id}>
                       <header>
-                        <span className="avatar">
-                          {initials(m.sender_name)}
-                        </span>
+                        <AgentAvatar
+                          name={m.sender_name}
+                          program={agentOf(m.sender_name)?.program}
+                          model={agentOf(m.sender_name)?.model}
+                        />
                         <div>
                           <strong>{m.sender_name}</strong>
                           <p>to {m.recipients.map((r) => r.name).join(", ")}</p>
@@ -739,8 +747,13 @@ export default function Workspace() {
                     disabled={!canWrite}
                     onClick={() => compose(chosen)}
                   >
-                    <span className="avatar small">{initials(agent)}</span>Write
-                    a reply...
+                    <AgentAvatar
+                      className="avatar small"
+                      name={agent}
+                      program={agentOf(agent)?.program}
+                      model={agentOf(agent)?.model}
+                    />
+                    Write a reply...
                     <CornerDownRight size={15} />
                   </button>
                 </div>

@@ -3,6 +3,7 @@ import Coordination from "./coordination";
 import Security from "./security";
 import Activity from "./activity";
 import Backups from "./backups";
+import Members from "./members";
 import { AccountData, TeamData } from "./data";
 import { ThemeSwitch } from "./theme-toggle";
 import Select from "./select";
@@ -56,8 +57,6 @@ export default function Settings({ onClose, onChanged, project, agents }) {
     [quota, setQuota] = useState(256),
     [newTeam, setNewTeam] = useState(""),
     [joinCode, setJoinCode] = useState(""),
-    [inviteEmail, setInviteEmail] = useState(""),
-    [inviteRole, setInviteRole] = useState("member"),
     [keyAgent, setKeyAgent] = useState(""),
     [keyName, setKeyName] = useState(""),
     [password, setPassword] = useState(""),
@@ -85,7 +84,7 @@ export default function Settings({ onClose, onChanged, project, agents }) {
     setNotice("");
     try {
       const result = await api("settings/" + path, input);
-      if (result.token || result.code) {
+      if ((result.token || result.code) && tab !== "members") {
         setSecret(result.token || result.code);
         setCopied(false);
       }
@@ -380,139 +379,14 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                   </>
                 )}
                 {tab === "members" && (
-                  <>
-                    <h3>Members</h3>
-                    <div className="settings-rows">
-                      {data.members.map((m) => (
-                        <div className="settings-row" key={m.id}>
-                          <div>
-                            <strong>{m.name}</strong>
-                            <span>
-                              {m.email}
-                              {m.disabled ? " · Disabled" : ""}
-                            </span>
-                          </div>
-                          <Select
-                            aria-label={"Role for " + m.name}
-                            value={m.role}
-                            disabled={
-                              !admin ||
-                              m.role === "owner" ||
-                              m.id === data.user.id ||
-                              (!owner && m.role === "admin")
-                            }
-                            onChange={(e) =>
-                              run("member", {
-                                team_id: team,
-                                user_id: m.id,
-                                role: e.target.value,
-                              })
-                            }
-                          >
-                            {m.role === "owner" && (
-                              <option value="owner">Owner</option>
-                            )}
-                            {(owner || m.role === "admin") && (
-                              <option value="admin">Admin</option>
-                            )}
-                            <option value="member">Member</option>
-                            <option value="viewer">Viewer</option>
-                          </Select>
-                          <button
-                            className="icon-button danger"
-                            aria-label={"Remove " + m.name}
-                            disabled={
-                              !admin ||
-                              m.role === "owner" ||
-                              m.id === data.user.id ||
-                              (!owner && m.role === "admin")
-                            }
-                            onClick={() =>
-                              run("member", {
-                                team_id: team,
-                                user_id: m.id,
-                                remove: true,
-                              })
-                            }
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    {admin && (
-                      <>
-                        <hr />
-                        <h4>Invite a teammate</h4>
-                        <p className="muted">
-                          Codes expire after 7 days, work once and are bound to
-                          the invited email. Send the code to your teammate
-                          yourself.
-                        </p>
-                        <form
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            run("invite", {
-                              team_id: team,
-                              email: inviteEmail,
-                              role: inviteRole,
-                            });
-                          }}
-                        >
-                          <label htmlFor="invite-email">Email address</label>
-                          <input
-                            id="invite-email"
-                            type="email"
-                            value={inviteEmail}
-                            onChange={(e) => setInviteEmail(e.target.value)}
-                            required
-                          />
-                          <label htmlFor="invite-role">Role</label>
-                          <Select
-                            id="invite-role"
-                            value={inviteRole}
-                            onChange={(e) => setInviteRole(e.target.value)}
-                          >
-                            <option value="member">
-                              Member — read and send
-                            </option>
-                            <option value="viewer">Viewer — read only</option>
-                            {owner && (
-                              <option value="admin">Admin — manage team</option>
-                            )}
-                          </Select>
-                          <button className="primary" disabled={busy}>
-                            Create invitation
-                          </button>
-                        </form>
-                        <div className="settings-rows">
-                          {data.invitations
-                            .filter((i) => !i.used_at)
-                            .map((i) => (
-                              <div className="settings-row" key={i.id}>
-                                <div>
-                                  <strong>{i.email}</strong>
-                                  <span>
-                                    {i.role} · expires{" "}
-                                    {new Date(
-                                      i.expires_at,
-                                    ).toLocaleDateString()}
-                                  </span>
-                                </div>
-                                <button
-                                  className="subtle-button"
-                                  onClick={() =>
-                                    run("invite/revoke", { id: i.id })
-                                  }
-                                >
-                                  Revoke
-                                </button>
-                              </div>
-                            ))}
-                        </div>
-                      </>
-                    )}
-                  </>
+                  <Members
+                    data={data}
+                    team={team}
+                    admin={admin}
+                    owner={owner}
+                    run={run}
+                    busy={busy}
+                  />
                 )}
                 {tab === "keys" && (
                   <>

@@ -171,6 +171,9 @@ try {
     .getByRole("button", { name: "Members & invites", exact: true })
     .click();
   await page
+    .getByRole("button", { name: "Invite teammate", exact: true })
+    .click();
+  await page
     .getByLabel("Email address", { exact: true })
     .fill("teammate@example.com");
   const roleSelect = page.getByRole("combobox", { name: "Role", exact: true });
@@ -194,9 +197,9 @@ try {
   await page
     .getByRole("button", { name: "Create invitation", exact: true })
     .click();
-  await page.locator(".secret-result code").waitFor();
-  const invite = await page.locator(".secret-result code").textContent();
+  const invite = await page.getByLabel("Invite code").inputValue();
   assert.ok(invite.length > 30);
+  assert.match(await page.getByLabel("Invite link").inputValue(), /\?invite=/);
   await page
     .getByRole("button", { name: "Agent credentials", exact: true })
     .click();

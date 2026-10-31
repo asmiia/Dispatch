@@ -259,3 +259,16 @@ a.subtle-button {
   gap: 8px;
   margin-left: auto;
 }
+.avatar.logo svg {
+  width: 58%;
+  height: 58%;
+}
+.avatar.tiny {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+}
+.avatar.tiny.logo svg {
+  width: 62%;
+  height: 62%;
+}
