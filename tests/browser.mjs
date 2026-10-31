@@ -223,9 +223,9 @@ try {
       .querySelector(".secret-result code")
       ?.textContent?.startsWith("at_user_"),
   );
-  await page
-    .getByRole("button", { name: "Instance admin", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  await page.getByText("Messages per day").waitFor();
+  await page.getByRole("button", { name: "Users", exact: true }).click();
   await page.getByText("owner@example.com", { exact: true }).waitFor();
   await page.screenshot({
     path: "artifacts/settings-desktop.png",
@@ -243,6 +243,9 @@ try {
   );
   await page.screenshot({ path: "artifacts/mail-mobile.png", fullPage: true });
   assert.deepEqual(errors, []);
+  // Unknown pages send people to the home page.
+  await page.goto(origin + "/definitely-not-a-page");
+  assert.equal(new URL(page.url()).pathname, "/");
   console.log(
     "Browser passed: sign-in, project/agent creation, compose, file upload, visible download, cookie-authenticated byte check, replies, mobile layout, no page errors.",
   );

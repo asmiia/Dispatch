@@ -94,6 +94,16 @@ test(
       assert.ok(ready, logs);
 
       const health = await (await fetch(origin + "/health")).json();
+      // Unknown pages send people home; real endpoints are untouched.
+      const lost = await fetch(origin + "/no/such/page", {
+        redirect: "manual",
+      });
+      assert.equal(lost.status, 307);
+      assert.equal(new URL(lost.headers.get("location"), origin).pathname, "/");
+      assert.equal(
+        (await fetch(origin + "/health", { redirect: "manual" })).status,
+        200,
+      );
       assert.equal(health.status, "ok");
 
       const req = (path, body, headers = {}) =>

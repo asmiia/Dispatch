@@ -1,5 +1,16 @@
 export default {
   serverExternalPackages: ["node:sqlite"],
+  // The app is a single page, so any other path sends people to it (the sign-in form when signed out).
+  async redirects() {
+    return [
+      {
+        source:
+          "/:path((?!api/|mcp|health|_next/|favicon[.]ico|icon|apple-icon).+)",
+        destination: "/",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {

@@ -30,6 +30,7 @@ import remarkGfm from "remark-gfm";
 import Settings from "./settings";
 import Login from "./login";
 import AgentAvatar, { logoFor } from "./agent-avatar";
+import UserAvatar from "./user-avatar";
 function DispatchMark({ size = 20 }) {
   return (
     <svg
@@ -482,7 +483,16 @@ export default function Workspace() {
             className="settings-open"
             onClick={() => setModal("settings")}
           >
-            <Settings2 size={15} />
+            {user ? (
+              <UserAvatar
+                id={user.id}
+                name={user.name}
+                v={user.avatar_v}
+                size={20}
+              />
+            ) : (
+              <Settings2 size={15} />
+            )}
             Settings
           </button>
         </div>
@@ -978,11 +988,13 @@ export default function Workspace() {
                 <input
                   id="new-name"
                   autoFocus
-                  required
+                  required={modal === "project"}
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder={
-                    modal === "project" ? "e.g. Website" : "e.g. CopperGrove"
+                    modal === "project"
+                      ? "e.g. Website"
+                      : "Leave blank for a random name"
                   }
                 />
                 {modal === "project" && (
@@ -1012,7 +1024,7 @@ export default function Workspace() {
                 <p className="muted">
                   {modal === "project"
                     ? "Keep related conversations, agents and files together."
-                    : "Use letters, numbers, underscores or hyphens."}
+                    : "Leave it blank for a random name like CopperGrove, or use letters, numbers, underscores or hyphens."}
                 </p>
                 <button className="primary" disabled={busy}>
                   <Plus size={14} />

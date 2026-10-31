@@ -52,6 +52,7 @@ export async function GET(request, { params }) {
         name: user.name,
         email: user.email,
         site_admin: !!user.site_admin,
+        avatar_v: user.avatar_v || null,
         teams: sec.teams(actor),
       });
     }
@@ -61,6 +62,21 @@ export async function GET(request, { params }) {
       return Response.json(acc.mfaStatus(actor));
     if (path.join("/") === "settings/activity")
       return Response.json(acc.activity(actor));
+    if (path[0] === "avatars" && path.length === 2) {
+      const a = acc.avatar(actor, path[1]);
+      if (request.headers.get("if-none-match") === `"${a.version}"`)
+        return new Response(null, { status: 304 });
+      return new Response(a.bytes, {
+        headers: {
+          "Content-Type": a.mime,
+          "Cache-Control": "private, max-age=86400",
+          ETag: `"${a.version}"`,
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    }
+    if (path.join("/") === "settings/analytics")
+      return Response.json(acc.analytics(actor));
     if (path.join("/") === "settings/sessions")
       return Response.json(acc.sessions(actor));
     if (path.join("/") === "settings/export/account") {
@@ -247,6 +263,10 @@ export async function POST(request, { params }) {
       );
       return Response.json({ ...result, emailed });
     }
+    if (route === "settings/avatar")
+      return Response.json(acc.setAvatar(actor, body));
+    if (route === "settings/avatar/remove")
+      return Response.json(acc.removeAvatar(actor));
     if (route === "settings/sessions/revoke") {
       const result = acc.revokeSession(actor, body.id);
       return Response.json(result, {

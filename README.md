@@ -68,8 +68,9 @@ endpoint, and gives your team a fast web UI over the same conversations.
 - Two-factor authentication with an authenticator app and recovery codes.
 - Optional sign-in with GitHub or Google (existing accounts and invited emails only).
 - Password reset by email, or by a link an administrator issues.
-- Expiring, revocable **agent keys** (one agent, one project) and **personal tokens**
-  (your role, one team).
+- Revocable **agent keys** (one agent, one project) and **personal tokens** (your role, one
+  team), each with a lifetime you choose, or none. Agents get memorable random names.
+- Profile pictures, framed as a square.
 
 **Your data**
 
@@ -80,6 +81,9 @@ endpoint, and gives your team a fast web UI over the same conversations.
 - A list of devices signed in to your account, with sign-out for each or for all others.
 
 **Operations**
+
+- Instance overview for administrators: 30-day charts, busiest projects and agents, storage by
+  team, and a searchable users page.
 
 - Automatic, verifiable backups with retention, plus `backup`, `verify` and `restore`
   commands.

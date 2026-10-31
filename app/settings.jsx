@@ -4,6 +4,9 @@ import Security from "./security";
 import Activity from "./activity";
 import Backups from "./backups";
 import Members from "./members";
+import Account from "./account";
+import Overview from "./overview";
+import InstanceUsers from "./instance-users";
 import { AccountData, TeamData } from "./data";
 import { ThemeSwitch } from "./theme-toggle";
 import Select from "./select";
@@ -26,6 +29,7 @@ import {
   Loader2,
   Link2,
   DatabaseBackup,
+  BarChart3,
 } from "lucide-react";
 async function api(path, body) {
   const r = await fetch("/api/" + path, {
@@ -42,6 +46,15 @@ async function api(path, body) {
   if (!r.ok) throw new Error(value.error);
   return value;
 }
+const expires = (t) =>
+  t > 4e12 ? "Never expires" : "Expires " + new Date(t).toLocaleDateString();
+const lifetimes = [
+  ["0", "Never expires"],
+  ["365", "1 year"],
+  ["90", "90 days"],
+  ["30", "30 days"],
+  ["7", "7 days"],
+];
 export default function Settings({ onClose, onChanged, project, agents }) {
   const [personalName, setPersonalName] = useState("");
   const [data, setData] = useState(null),
@@ -64,7 +77,9 @@ export default function Settings({ onClose, onChanged, project, agents }) {
     [delUser, setDelUser] = useState(""),
     [newAgent, setNewAgent] = useState(""),
     [newProgram, setNewProgram] = useState(""),
-    [newModel, setNewModel] = useState("");
+    [newModel, setNewModel] = useState(""),
+    [keyDays, setKeyDays] = useState("0"),
+    [personalDays, setPersonalDays] = useState("365");
   async function load(id = team) {
     try {
       const d = await api("settings" + (id ? "?team=" + id : ""));
@@ -114,19 +129,19 @@ export default function Settings({ onClose, onChanged, project, agents }) {
     try {
       let agentName = keyAgent || agents[0]?.name;
       if (!agentName || keyAgent === "__new") {
-        agentName = newAgent.trim();
-        await api("agents", {
+        const created = await api("agents", {
           project_key: project,
-          name: agentName,
+          name: newAgent.trim() || undefined,
           program: newProgram.trim() || "agent",
           model: newModel.trim() || "unknown",
         });
+        agentName = created.name;
       }
       const made = await api("settings/key", {
         project_key: project,
         agent_name: agentName,
         name: keyName,
-        days: 30,
+        days: Number(keyDays),
       });
       setSecret(made.token);
       setCopied(false);
@@ -191,7 +206,8 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                     [
                       "Instance",
                       [
-                        ["instance", UsersRound, "Instance admin"],
+                        ["analytics", BarChart3, "Overview"],
+                        ["instance", UsersRound, "Users"],
                         ["activity", ActivityIcon, "Activity"],
                         ["backups", DatabaseBackup, "Backups"],
                       ],
@@ -201,31 +217,6 @@ export default function Settings({ onClose, onChanged, project, agents }) {
             ].map(([group, items]) => (
               <div className="settings-group" key={group}>
                 <span className="settings-group-label">{group}</span>
-                {group === "Team" && data && (
-                  <div className="nav-team">
-                    {data.teams.length > 1 ? (
-                      <Select
-                        aria-label="Selected team"
-                        value={team}
-                        onChange={(e) => {
-                          setTeam(e.target.value);
-                          load(e.target.value);
-                          setSecret("");
-                        }}
-                      >
-                        {data.teams.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name} · {t.role}
-                          </option>
-                        ))}
-                      </Select>
-                    ) : (
-                      <span className="nav-team-name" title="Your team">
-                        {data.teams[0]?.name} · {data.teams[0]?.role}
-                      </span>
-                    )}
-                  </div>
-                )}
                 {items.map(([id, Icon, label]) => (
                   <button
                     key={id}
@@ -243,6 +234,26 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                 ))}
               </div>
             ))}
+            {data && data.teams.length > 1 && (
+              <div className="nav-team-bottom">
+                <span className="settings-group-label">Switch team</span>
+                <Select
+                  aria-label="Selected team"
+                  value={team}
+                  onChange={(e) => {
+                    setTeam(e.target.value);
+                    load(e.target.value);
+                    setSecret("");
+                  }}
+                >
+                  {data.teams.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} · {t.role}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
           </nav>
           <div className="settings-content">
             {!data ? (
@@ -253,72 +264,19 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                   <Coordination project={project} agents={agents} />
                 )}
                 {tab === "account" && (
-                  <>
-                    <h3>Your account</h3>
-                    <p className="muted">
-                      {data.user.email}{" "}
-                      {data.user.site_admin ? "· Instance administrator" : ""}
-                    </p>
-                    <h4>Appearance</h4>
-                    <ThemeSwitch />
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        run("profile", {
-                          name,
-                          password,
-                          current_password: currentPassword,
-                        });
-                      }}
-                    >
-                      <label htmlFor="profile-name">Display name</label>
-                      <input
-                        id="profile-name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required
-                      />
-                      <h4>Change password</h4>
-                      <label htmlFor="current-password">Current password</label>
-                      <input
-                        id="current-password"
-                        type="password"
-                        autoComplete="current-password"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                      />
-                      <label htmlFor="new-password">New password</label>
-                      <input
-                        id="new-password"
-                        type="password"
-                        autoComplete="new-password"
-                        minLength={12}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
-                      <p className="muted">
-                        Changing your password signs out all browser sessions.
-                      </p>
-                      <button className="primary" disabled={busy}>
-                        Save account
-                      </button>
-                      <button
-                        type="button"
-                        className="subtle-button account-signout"
-                        onClick={async () => {
-                          try {
-                            await api("logout", {});
-                            window.location.reload();
-                          } catch (e) {
-                            setError(e.message);
-                          }
-                        }}
-                      >
-                        Sign out
-                      </button>
-                    </form>
-                    <AccountData api={api} user={data.user} />
-                  </>
+                  <Account
+                    data={data}
+                    api={api}
+                    run={run}
+                    busy={busy}
+                    setError={setError}
+                    goTo={(id) => {
+                      setTab(id);
+                      setSecret("");
+                      setNotice("");
+                      setError("");
+                    }}
+                  />
                 )}
                 {tab === "security" && <Security api={api} />}
                 {tab === "activity" && <Activity api={api} />}
@@ -476,10 +434,9 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                               id="new-agent-name"
                               value={newAgent}
                               onChange={(e) => setNewAgent(e.target.value)}
-                              placeholder="e.g. ReviewBot"
+                              placeholder="A random name, like CopperGrove"
                               pattern="[A-Za-z][A-Za-z0-9_\-]*"
                               title="Letters, numbers, - and _, starting with a letter"
-                              required
                             />
                             <label htmlFor="new-agent-program">
                               Program (picks the agent's logo)
@@ -522,7 +479,18 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                           placeholder="e.g. my laptop, CI runner"
                           required
                         />
-                        <p className="muted">Expires in 30 days.</p>
+                        <label htmlFor="key-days">Lifetime</label>
+                        <Select
+                          id="key-days"
+                          value={keyDays}
+                          onChange={(e) => setKeyDays(e.target.value)}
+                        >
+                          {lifetimes.map(([v, l]) => (
+                            <option key={v} value={v}>
+                              {l}
+                            </option>
+                          ))}
+                        </Select>
                         <button
                           className="primary"
                           disabled={
@@ -550,10 +518,7 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                             <span>
                               {k.agent_name} · {k.project_name}
                               <br />
-                              {k.revoked_at
-                                ? "Revoked"
-                                : "Expires " +
-                                  new Date(k.expires_at).toLocaleDateString()}
+                              {k.revoked_at ? "Revoked" : expires(k.expires_at)}
                             </span>
                           </div>
                           <button
@@ -580,7 +545,7 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                         run("personal-key", {
                           team_id: team,
                           name: personalName,
-                          days: 30,
+                          days: Number(personalDays),
                         });
                       }}
                     >
@@ -592,6 +557,18 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                         placeholder="e.g. My team administration client"
                         required
                       />
+                      <label htmlFor="personal-days">Lifetime</label>
+                      <Select
+                        id="personal-days"
+                        value={personalDays}
+                        onChange={(e) => setPersonalDays(e.target.value)}
+                      >
+                        {lifetimes.map(([v, l]) => (
+                          <option key={v} value={v}>
+                            {l}
+                          </option>
+                        ))}
+                      </Select>
                       <button className="primary" disabled={busy}>
                         Create personal MCP token
                       </button>
@@ -602,10 +579,7 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                           <div>
                             <strong>{k.name}</strong>
                             <span>
-                              {k.revoked_at
-                                ? "Revoked"
-                                : "Expires " +
-                                  new Date(k.expires_at).toLocaleDateString()}
+                              {k.revoked_at ? "Revoked" : expires(k.expires_at)}
                             </span>
                           </div>
                           <button
@@ -649,69 +623,17 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                     </div>
                   </>
                 )}
+                {tab === "analytics" && <Overview api={api} />}
                 {tab === "instance" && (
-                  <>
-                    <h3>Instance administration</h3>
-                    <p className="muted">
-                      The first account manages every team and account. Disabled
-                      users lose their sessions and their agent keys stop
-                      working.
-                    </p>
-                    <div className="settings-rows">
-                      {data.users.map((u) => (
-                        <div className="settings-row" key={u.id}>
-                          <div>
-                            <strong>
-                              {u.name}
-                              {u.site_admin ? " · Administrator" : ""}
-                            </strong>
-                            <span>{u.email}</span>
-                          </div>
-                          <button
-                            className="subtle-button"
-                            disabled={u.disabled}
-                            title="Create a one-time password reset link"
-                            onClick={async () => {
-                              const r = await run("user/reset", {
-                                user_id: u.id,
-                              });
-                              if (r)
-                                setSecret(
-                                  `${window.location.origin}/?reset=${r.code}`,
-                                );
-                            }}
-                          >
-                            <Link2 size={13} />
-                            Reset link
-                          </button>
-                          <button
-                            className="subtle-button"
-                            disabled={u.id === data.user.id}
-                            onClick={() =>
-                              run("user", {
-                                user_id: u.id,
-                                disabled: !u.disabled,
-                              })
-                            }
-                          >
-                            {u.disabled ? "Enable" : "Disable"}
-                          </button>
-                          <button
-                            className="subtle-button danger"
-                            disabled={u.id === data.user.id}
-                            onClick={async () => {
-                              if (delUser !== u.id) return setDelUser(u.id);
-                              setDelUser("");
-                              await run("user/delete", { user_id: u.id });
-                            }}
-                          >
-                            <Trash2 size={13} />
-                            {delUser === u.id ? "Confirm delete" : "Delete"}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </>
+                  <InstanceUsers
+                    data={data}
+                    run={run}
+                    resetLink={async (id) => {
+                      const r = await run("user/reset", { user_id: id });
+                      if (r)
+                        setSecret(`${window.location.origin}/?reset=${r.code}`);
+                    }}
+                  />
                 )}
               </>
             )}

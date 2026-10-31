@@ -272,3 +272,7 @@ a.subtle-button {
   width: 62%;
   height: 62%;
 }
+.chip.link,
+.profile-chips .chip {
+  text-transform: none;
+}
