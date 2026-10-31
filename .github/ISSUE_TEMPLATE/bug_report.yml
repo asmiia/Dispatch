@@ -1,0 +1,68 @@
+name: Bug report
+description: Something doesn't work, or works differently from the docs
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Don't paste secrets** (setup keys, tokens, passwords, recovery codes) or private message content. For security problems, use the private advisory form instead of this page.
+  - type: input
+    id: version
+    attributes:
+      label: Dispatch version
+      description: From the release you installed, or `GET /health`.
+      placeholder: 0.2.0-alpha
+    validations:
+      required: true
+  - type: dropdown
+    id: how
+    attributes:
+      label: How are you running it?
+      options:
+        - Docker image (ghcr.io)
+        - Docker Compose (built from source)
+        - npm start / npm run dev
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: OS and Node version (or Docker version)
+      placeholder: Ubuntu 24.04, Node 24.12
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did and what you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Sign in as ...
+        2. Open Settings > ...
+        3. Click ...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log lines
+      description: Logs are JSON, one object per line. Remove anything private.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed secrets and private content from this report.
+          required: true
+        - label: I searched existing issues.
+          required: true

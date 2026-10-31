@@ -1410,9 +1410,14 @@ a {
   justify-content: center;
   padding: 24px 16px;
   background:
-    radial-gradient(ellipse 60% 50% at 50% 0%, var(--c-ffffff0d), transparent 70%),
+    radial-gradient(
+      ellipse 60% 50% at 50% 0%,
+      var(--c-ffffff0d),
+      transparent 70%
+    ),
     linear-gradient(var(--c-ffffff08) 1px, transparent 1px) 0 0 / 56px 56px,
-    linear-gradient(90deg, var(--c-ffffff08) 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(90deg, var(--c-ffffff08) 1px, transparent 1px) 0 0 / 56px
+      56px,
     var(--c-000000);
   -webkit-mask-image: none;
 }

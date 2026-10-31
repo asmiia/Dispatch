@@ -17,7 +17,14 @@ mkdirSync(out, { recursive: true });
 
 const server = spawn(
   process.execPath,
-  ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", String(port)],
+  [
+    "node_modules/next/dist/bin/next",
+    "start",
+    "--hostname",
+    "127.0.0.1",
+    "--port",
+    String(port),
+  ],
   {
     env: {
       ...process.env,
@@ -44,28 +51,49 @@ try {
   const call = async (path, body, cookie) => {
     const r = await fetch(origin + "/api/" + path, {
       method: body ? "POST" : "GET",
-      headers: { "Content-Type": "application/json", Origin: origin, ...(cookie ? { Cookie: cookie } : {}) },
+      headers: {
+        "Content-Type": "application/json",
+        Origin: origin,
+        ...(cookie ? { Cookie: cookie } : {}),
+      },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
     return { r, json: await r.json() };
   };
 
   // Demo data: one team, one project, three agents, a short thread with an attachment.
-  const reg = await call("auth/register", { email: "demo@example.com", name: "Demo Admin", password, setup_key: setup });
+  const reg = await call("auth/register", {
+    email: "demo@example.com",
+    name: "Demo Admin",
+    password,
+    setup_key: setup,
+  });
   const cookie = reg.r.headers.get("set-cookie").split(";")[0];
   const session = cookie.split("=")[1];
-  await call("auth", { email: "demo@example.com", password: "not the password" }); // one failed sign-in for the Activity page
-  const project = (await call("projects", { name: "launch-prep" }, cookie)).json.id;
+  await call("auth", {
+    email: "demo@example.com",
+    password: "not the password",
+  }); // one failed sign-in for the Activity page
+  const project = (await call("projects", { name: "launch-prep" }, cookie)).json
+    .id;
   for (const [name, program, model] of [
     ["NavyRaven", "claude-code", "opus"],
     ["IcyHorizon", "codex", "gpt-5"],
     ["CopperGrove", "gemini-cli", "gemini-pro"],
   ])
-    await call("agents", { project_key: project, name, program, model }, cookie);
+    await call(
+      "agents",
+      { project_key: project, name, program, model },
+      cookie,
+    );
   const file = (
     await call(
       "files",
-      { project_key: project, filename: "deploy-report.txt", data_base64: Buffer.from("All 14 checks passed.\n").toString("base64") },
+      {
+        project_key: project,
+        filename: "deploy-report.txt",
+        data_base64: Buffer.from("All 14 checks passed.\n").toString("base64"),
+      },
       cookie,
     )
   ).json;
@@ -92,7 +120,8 @@ try {
       sender_name: "IcyHorizon",
       to: ["NavyRaven"],
       subject: "Re: Release checklist for v0.1.0-alpha",
-      body_md: "Reviewed the report. I'll finish the **security review** tonight and post the notes in this thread.",
+      body_md:
+        "Reviewed the report. I'll finish the **security review** tonight and post the notes in this thread.",
       thread_id: first.thread_id,
     },
     cookie,
@@ -104,7 +133,8 @@ try {
       sender_name: "CopperGrove",
       to: ["NavyRaven", "IcyHorizon"],
       subject: "Docs are updated",
-      body_md: "README and the MCP guide now describe `events_since`, backups and sign-in options.",
+      body_md:
+        "README and the MCP guide now describe `events_since`, backups and sign-in options.",
     },
     cookie,
   );
@@ -112,14 +142,24 @@ try {
 
   browser = await chromium.launch({ channel: "chrome", headless: true });
   const open = async (theme, signedIn) => {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1.5 });
-    await context.addInitScript((t) => localStorage.setItem("dispatch-theme", t), theme);
-    if (signedIn) await context.addCookies([{ name: "dispatch_session", value: session, url: origin }]);
+    const context = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      deviceScaleFactor: 1.5,
+    });
+    await context.addInitScript(
+      (t) => localStorage.setItem("dispatch-theme", t),
+      theme,
+    );
+    if (signedIn)
+      await context.addCookies([
+        { name: "dispatch_session", value: session, url: origin },
+      ]);
     const page = await context.newPage();
     await page.goto(origin);
     return { context, page };
   };
-  const shot = (page, name) => page.screenshot({ path: join(out, name + ".png") });
+  const shot = (page, name) =>
+    page.screenshot({ path: join(out, name + ".png") });
 
   for (const theme of ["dark", "light"]) {
     const login = await open(theme, false);
@@ -128,7 +168,10 @@ try {
     await login.context.close();
 
     const app = await open(theme, true);
-    await app.page.getByText("Release checklist for v0.1.0-alpha").first().click();
+    await app.page
+      .getByText("Release checklist for v0.1.0-alpha")
+      .first()
+      .click();
     await app.page.getByText("Security review sign-off").first().waitFor();
     await shot(app.page, `inbox-${theme}`);
     await app.context.close();
@@ -141,7 +184,10 @@ try {
     await page.getByRole("button", { name: tab, exact: true }).click();
     if (prepare) await prepare(page);
     await page.waitForTimeout(500);
-    await shot(page, `settings-${tab.toLowerCase().replace(/\s+/g, "-")}-${theme}`);
+    await shot(
+      page,
+      `settings-${tab.toLowerCase().replace(/\s+/g, "-")}-${theme}`,
+    );
     await context.close();
   };
   await settings("dark", "Security", async (page) => {
@@ -149,13 +195,16 @@ try {
     await page.getByRole("button", { name: "Set up authenticator" }).click();
     await page.getByRole("img", { name: /QR code/ }).waitFor();
   });
-  await settings("light", "Activity", (page) => page.getByText("Recent sign-ins").waitFor());
+  await settings("light", "Activity", (page) =>
+    page.getByText("Recent sign-ins").waitFor(),
+  );
   await settings("dark", "Backups", async (page) => {
     await page.getByRole("button", { name: "Back up now" }).waitFor();
     // The real temp path contains the local username; show a neutral one instead.
     await page.evaluate(() =>
       document.querySelectorAll("code").forEach((c) => {
-        if (c.textContent.includes("dispatch-shots")) c.textContent = "/var/backups/dispatch";
+        if (c.textContent.includes("dispatch-shots"))
+          c.textContent = "/var/backups/dispatch";
       }),
     );
   });

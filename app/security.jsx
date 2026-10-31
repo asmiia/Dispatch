@@ -1,6 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, Copy, Laptop, Loader2, LogOut, ShieldCheck, Smartphone } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Laptop,
+  Loader2,
+  LogOut,
+  ShieldCheck,
+  Smartphone,
+} from "lucide-react";
 
 function Qr({ rows }) {
   const n = rows.length;
@@ -15,7 +23,16 @@ function Qr({ rows }) {
       <rect x="-2" y="-2" width={n + 4} height={n + 4} fill="#fff" />
       {rows.flatMap((row, y) =>
         [...row].map((cell, x) =>
-          cell === "1" ? <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="#000" /> : null,
+          cell === "1" ? (
+            <rect
+              key={`${x}-${y}`}
+              x={x}
+              y={y}
+              width="1"
+              height="1"
+              fill="#000"
+            />
+          ) : null,
         ),
       )}
     </svg>
@@ -24,14 +41,38 @@ function Qr({ rows }) {
 
 const device = (ua) => {
   if (!ua) return "Unknown device";
-  const browser = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "Browser";
-  const os = /Windows/.test(ua) ? "Windows" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Mac OS/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "";
+  const browser = /Edg\//.test(ua)
+    ? "Edge"
+    : /Firefox\//.test(ua)
+      ? "Firefox"
+      : /Chrome\//.test(ua)
+        ? "Chrome"
+        : /Safari\//.test(ua)
+          ? "Safari"
+          : "Browser";
+  const os = /Windows/.test(ua)
+    ? "Windows"
+    : /Android/.test(ua)
+      ? "Android"
+      : /iPhone|iPad/.test(ua)
+        ? "iOS"
+        : /Mac OS/.test(ua)
+          ? "macOS"
+          : /Linux/.test(ua)
+            ? "Linux"
+            : "";
   return os ? `${browser} on ${os}` : browser;
 };
 const ago = (iso) => {
   if (!iso) return "unknown";
   const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
-  return s < 90 ? "just now" : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129600 ? `${Math.round(s / 3600)} h ago` : new Date(iso).toLocaleDateString();
+  return s < 90
+    ? "just now"
+    : s < 5400
+      ? `${Math.round(s / 60)} min ago`
+      : s < 129600
+        ? `${Math.round(s / 3600)} h ago`
+        : new Date(iso).toLocaleDateString();
 };
 
 // Devices signed in to this account, with the option to sign any of them out.
@@ -39,7 +80,10 @@ function Sessions({ api }) {
   const [rows, setRows] = useState(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
-  const load = () => api("settings/sessions").then(setRows).catch((e) => setError(e.message));
+  const load = () =>
+    api("settings/sessions")
+      .then(setRows)
+      .catch((e) => setError(e.message));
   useEffect(() => {
     load();
   }, []);
@@ -56,7 +100,14 @@ function Sessions({ api }) {
       setBusy(false);
     }
   }
-  if (!rows) return error ? <div className="error" role="alert">{error}</div> : <Loader2 className="spin" size={20} />;
+  if (!rows)
+    return error ? (
+      <div className="error" role="alert">
+        {error}
+      </div>
+    ) : (
+      <Loader2 className="spin" size={20} />
+    );
   return (
     <>
       <h4>Active sessions</h4>
@@ -65,17 +116,25 @@ function Sessions({ api }) {
           <div className="settings-row" key={r.id}>
             <div>
               <strong>
-                <Laptop size={13} style={{ marginRight: 8, verticalAlign: -2 }} />
+                <Laptop
+                  size={13}
+                  style={{ marginRight: 8, verticalAlign: -2 }}
+                />
                 {device(r.ua)}
                 {r.current ? " · This device" : ""}
               </strong>
               <span>
-                Active {ago(r.last_seen || r.created_at)} · signed in {ago(r.created_at)}
+                Active {ago(r.last_seen || r.created_at)} · signed in{" "}
+                {ago(r.created_at)}
                 {r.ip ? ` · ${r.ip}` : ""}
               </span>
             </div>
             {!r.current && (
-              <button className="subtle-button" disabled={busy} onClick={() => act("settings/sessions/revoke", { id: r.id })}>
+              <button
+                className="subtle-button"
+                disabled={busy}
+                onClick={() => act("settings/sessions/revoke", { id: r.id })}
+              >
                 <LogOut size={13} />
                 Sign out
               </button>
@@ -84,11 +143,19 @@ function Sessions({ api }) {
         ))}
       </div>
       {rows.length > 1 && (
-        <button className="subtle-button" disabled={busy} onClick={() => act("settings/sessions/revoke-others", {})}>
+        <button
+          className="subtle-button"
+          disabled={busy}
+          onClick={() => act("settings/sessions/revoke-others", {})}
+        >
           Sign out all other sessions
         </button>
       )}
-      {error && <div className="error" role="alert">{error}</div>}
+      {error && (
+        <div className="error" role="alert">
+          {error}
+        </div>
+      )}
     </>
   );
 }
@@ -130,8 +197,14 @@ export default function Security({ api }) {
       <h3>Security</h3>
       <div className="settings-card">
         <div className="settings-card-head">
-          <span className={"settings-card-icon" + (status.enabled ? " on" : "")}>
-            {status.enabled ? <ShieldCheck size={18} /> : <Smartphone size={18} />}
+          <span
+            className={"settings-card-icon" + (status.enabled ? " on" : "")}
+          >
+            {status.enabled ? (
+              <ShieldCheck size={18} />
+            ) : (
+              <Smartphone size={18} />
+            )}
           </span>
           <div>
             <strong>Two-factor authentication</strong>
@@ -147,10 +220,14 @@ export default function Security({ api }) {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              act(async () => setSetup(await api("settings/mfa/start", { password })));
+              act(async () =>
+                setSetup(await api("settings/mfa/start", { password })),
+              );
             }}
           >
-            <label htmlFor="mfa-start-password">Confirm your password to begin</label>
+            <label htmlFor="mfa-start-password">
+              Confirm your password to begin
+            </label>
             <input
               id="mfa-start-password"
               type="password"
@@ -177,8 +254,8 @@ export default function Security({ api }) {
             }}
           >
             <p className="muted">
-              Scan this with Google Authenticator, 1Password, Authy or similar, then enter the 6-digit
-              code it shows.
+              Scan this with Google Authenticator, 1Password, Authy or similar,
+              then enter the 6-digit code it shows.
             </p>
             <Qr rows={setup.qr} />
             <p className="muted">
@@ -196,7 +273,11 @@ export default function Security({ api }) {
             <button className="primary" disabled={busy}>
               Turn on
             </button>
-            <button type="button" className="subtle-button" onClick={() => setSetup(null)}>
+            <button
+              type="button"
+              className="subtle-button"
+              onClick={() => setSetup(null)}
+            >
               Cancel
             </button>
           </form>
@@ -206,7 +287,8 @@ export default function Security({ api }) {
           <div className="secret-result">
             <strong>Save your recovery codes</strong>
             <p className="muted">
-              Each code works once if you lose your phone. They won't be shown again.
+              Each code works once if you lose your phone. They won't be shown
+              again.
             </p>
             <code className="recovery-codes">{recovery.join("\n")}</code>
             <button
@@ -216,7 +298,8 @@ export default function Security({ api }) {
                 setCopied(true);
               }}
             >
-              {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? "Copied" : "Copy"}
+              {copied ? <Check size={13} /> : <Copy size={13} />}{" "}
+              {copied ? "Copied" : "Copy"}
             </button>
             <button className="subtle-button" onClick={() => setRecovery(null)}>
               I've saved them

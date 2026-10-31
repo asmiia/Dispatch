@@ -24,21 +24,37 @@ const mb = (n) => (n / 1048576).toFixed(1) + " MiB";
 try {
   if (command === "backup") {
     const r = await createBackup(dataDir);
-    console.log(`Backup ${r.stamp} written to ${root} (database ${mb(r.db_bytes)}, ${r.files_new} new of ${r.files_total} attachments, key: ${r.key}).`);
+    console.log(
+      `Backup ${r.stamp} written to ${root} (database ${mb(r.db_bytes)}, ${r.files_new} new of ${r.files_total} attachments, key: ${r.key}).`,
+    );
     if (r.key === "plain")
-      console.log("Warning: the encryption key is stored unencrypted. Set DISPATCH_BACKUP_PASSPHRASE to protect it.");
+      console.log(
+        "Warning: the encryption key is stored unencrypted. Set DISPATCH_BACKUP_PASSPHRASE to protect it.",
+      );
   } else if (command === "list") {
     const all = await listBackups(root);
     if (!all.length) console.log("No backups in " + root);
-    for (const b of all) console.log(`${b.stamp}  ${b.created}  db ${mb(b.db_bytes)}  key ${b.key}`);
+    for (const b of all)
+      console.log(
+        `${b.stamp}  ${b.created}  db ${mb(b.db_bytes)}  key ${b.key}`,
+      );
   } else if (command === "verify") {
     const stamp = await pick(),
       r = await verifyBackup(root, stamp);
-    console.log(r.ok ? `Backup ${stamp} is intact.` : `Backup ${stamp} has problems:\n- ` + r.problems.join("\n- "));
+    console.log(
+      r.ok
+        ? `Backup ${stamp} is intact.`
+        : `Backup ${stamp} has problems:\n- ` + r.problems.join("\n- "),
+    );
     process.exitCode = r.ok ? 0 : 1;
   } else if (command === "restore") {
-    const r = await restoreBackup(root, await pick(), dataDir, { force: flags.includes("--force") });
-    console.log(`Restored backup ${r.stamp} into ${dataDir}.` + (r.aside ? ` Previous data was moved to ${r.aside}.` : ""));
+    const r = await restoreBackup(root, await pick(), dataDir, {
+      force: flags.includes("--force"),
+    });
+    console.log(
+      `Restored backup ${r.stamp} into ${dataDir}.` +
+        (r.aside ? ` Previous data was moved to ${r.aside}.` : ""),
+    );
     console.log("Start Dispatch again.");
   } else {
     console.log(`Usage: node scripts/backup.mjs <command>

@@ -36,7 +36,9 @@ export default function Activity({ api }) {
         {stat.map(([key, label]) => (
           <div
             key={key}
-            className={"stat" + (key === "failed_24h" && data.stats[key] ? " warn" : "")}
+            className={
+              "stat" + (key === "failed_24h" && data.stats[key] ? " warn" : "")
+            }
           >
             <strong>{data.stats[key]}</strong>
             <span>{label}</span>
@@ -56,7 +58,8 @@ export default function Activity({ api }) {
               <span>
                 {l.method}
                 {l.reason ? ` · ${l.reason}` : ""}
-                {l.ip ? ` · ${l.ip}` : ""} · {new Date(l.created_at).toLocaleString()}
+                {l.ip ? ` · ${l.ip}` : ""} ·{" "}
+                {new Date(l.created_at).toLocaleString()}
               </span>
             </div>
           </div>

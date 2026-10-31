@@ -21,7 +21,8 @@
     "restore": "node scripts/backup.mjs restore",
     "screenshots": "node scripts/screenshots.mjs",
     "demo": "node scripts/demo.mjs",
-    "social": "node scripts/social.mjs"
+    "social": "node scripts/social.mjs",
+    "format:check": "prettier --check app lib tests scripts *.mjs *.json"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

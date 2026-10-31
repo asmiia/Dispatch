@@ -367,7 +367,10 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                         teamName={teamName}
                         role={data.role}
                         projects={data.projects || []}
-                        retention={data.teams.find((t) => t.id === team)?.retention_days || 0}
+                        retention={
+                          data.teams.find((t) => t.id === team)
+                            ?.retention_days || 0
+                        }
                         onChanged={async () => {
                           await load("");
                           await onChanged();
@@ -666,8 +669,8 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                                   ? "Deleted user"
                                   : a.actor_id === "system"
                                     ? "System"
-                                    : "Agent")} ·{" "}
-                              {new Date(a.created_at).toLocaleString()}
+                                    : "Agent")}{" "}
+                              · {new Date(a.created_at).toLocaleString()}
                             </span>
                           </div>
                         </div>

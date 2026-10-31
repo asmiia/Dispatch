@@ -155,7 +155,10 @@ try {
   await page
     .getByRole("button", { name: "Read thread digest", exact: true })
     .click();
-  await page.locator(".coordination").getByText("Downloaded and verified.", { exact: true }).waitFor();
+  await page
+    .locator(".coordination")
+    .getByText("Downloaded and verified.", { exact: true })
+    .waitFor();
   await page.getByRole("button", { name: "projects", exact: true }).click();
   await page
     .getByLabel("Project group name", { exact: true })

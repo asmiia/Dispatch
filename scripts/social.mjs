@@ -5,7 +5,9 @@ import { readFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 const b64 = (path) => readFileSync(resolve(path)).toString("base64");
-const regular = b64("node_modules/geist/dist/fonts/geist-sans/Geist-Regular.woff2");
+const regular = b64(
+  "node_modules/geist/dist/fonts/geist-sans/Geist-Regular.woff2",
+);
 const bold = b64("node_modules/geist/dist/fonts/geist-sans/Geist-Bold.woff2");
 const shot = b64("docs/screenshots/inbox-dark.png");
 
@@ -34,7 +36,9 @@ p{font-size:25px;line-height:1.4;color:#a1a1a1;max-width:520px}
 
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 try {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 640 } });
+  const page = await browser.newPage({
+    viewport: { width: 1280, height: 640 },
+  });
   await page.setContent(html);
   await page.evaluate(() => document.fonts.ready);
   mkdirSync("docs", { recursive: true });

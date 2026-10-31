@@ -32,19 +32,43 @@ const knownErrors = [
   "The provider rejected the request",
 ];
 const copy = {
-  signin: ["Log in to Dispatch", "Sign in to your team, or use an invitation to join."],
+  signin: [
+    "Log in to Dispatch",
+    "Sign in to your team, or use an invitation to join.",
+  ],
   register: ["Create your account", "Use the invitation code you were sent."],
-  setup: ["Set up Dispatch", "Create the administrator account for this instance."],
-  mfa: ["Two-factor authentication", "Enter the 6-digit code from your authenticator app, or a recovery code."],
-  forgot: ["Reset your password", "We'll email you a link to choose a new one."],
+  setup: [
+    "Set up Dispatch",
+    "Create the administrator account for this instance.",
+  ],
+  mfa: [
+    "Two-factor authentication",
+    "Enter the 6-digit code from your authenticator app, or a recovery code.",
+  ],
+  forgot: [
+    "Reset your password",
+    "We'll email you a link to choose a new one.",
+  ],
   reset: ["Choose a new password", "Use at least 12 characters."],
 };
 
 function DispatchMark({ size = 22 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <path d="M3 11 21 3l-8 18-2-8-8-2Z" fill="currentColor" />
-      <path className="mark-cut" d="m11 13 10-10" stroke="#f2f2f2" strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        className="mark-cut"
+        d="m11 13 10-10"
+        stroke="#f2f2f2"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -73,7 +97,9 @@ export default function Login({ onAuthed }) {
     if (invite || reset || failed)
       window.history.replaceState(null, "", window.location.pathname);
     if (failed)
-      setError(knownErrors.includes(failed) ? failed : "Sign-in failed. Try again.");
+      setError(
+        knownErrors.includes(failed) ? failed : "Sign-in failed. Try again.",
+      );
     if (params.get("email")) setEmail(params.get("email").slice(0, 254));
     api("auth/status")
       .then((s) => {
@@ -122,7 +148,13 @@ export default function Login({ onAuthed }) {
           mode === "signin" ? "auth" : "auth/register",
           mode === "signin"
             ? { email, password }
-            : { email, password, name, setup_key: setupKey, invite_code: inviteCode },
+            : {
+                email,
+                password,
+                name,
+                setup_key: setupKey,
+                invite_code: inviteCode,
+              },
         );
         if (result.mfa_required) {
           setChallenge(result.challenge);
@@ -198,7 +230,11 @@ export default function Login({ onAuthed }) {
                   {mode === "reset" ? "New password" : "Password"}
                 </label>
                 {mode === "signin" && (
-                  <button type="button" className="login-link" onClick={() => go("forgot")}>
+                  <button
+                    type="button"
+                    className="login-link"
+                    onClick={() => go("forgot")}
+                  >
                     Forgot password?
                   </button>
                 )}
@@ -208,7 +244,9 @@ export default function Login({ onAuthed }) {
                 type="password"
                 required
                 minLength={signup || mode === "reset" ? 12 : undefined}
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                autoComplete={
+                  mode === "signin" ? "current-password" : "new-password"
+                }
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -225,7 +263,9 @@ export default function Login({ onAuthed }) {
                 onChange={(e) => setSetupKey(e.target.value)}
                 placeholder="DISPATCH_SETUP_KEY from .env.local"
               />
-              <p className="muted">The first account becomes the instance administrator.</p>
+              <p className="muted">
+                The first account becomes the instance administrator.
+              </p>
             </>
           )}
           {mode === "register" && (
@@ -270,7 +310,10 @@ export default function Login({ onAuthed }) {
               )}
               {providers.includes("google") && (
                 <a className="login-mode" href="/api/auth/oauth/google/start">
-                  <span className="g-mark" aria-hidden="true">G</span> Continue with Google
+                  <span className="g-mark" aria-hidden="true">
+                    G
+                  </span>{" "}
+                  Continue with Google
                 </a>
               )}
             </div>
@@ -281,7 +324,8 @@ export default function Login({ onAuthed }) {
             Have an invitation? Create an account
           </button>
         )}
-        {(signup && !status?.needs_setup) || ["mfa", "forgot", "reset"].includes(mode) ? (
+        {(signup && !status?.needs_setup) ||
+        ["mfa", "forgot", "reset"].includes(mode) ? (
           <button className="login-mode" onClick={() => go("signin")}>
             Back to sign in
           </button>

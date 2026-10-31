@@ -327,9 +327,12 @@ Tailwind is not used; styles are plain CSS with theme tokens in `app/theme.css`.
 
 ## Contributing
 
-This is an alpha, so bug reports and rough edges are especially welcome. Open an issue
-with what you did, what you expected, your Node version, and the log line if there is one.
-See [CHANGELOG.md](CHANGELOG.md) for what changed between releases.
+This is an alpha, so bug reports, rough edges and small, tested pull requests are all
+welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), pick up a
+[good first issue](https://github.com/asmiia/Dispatch/labels/good%20first%20issue), or ask in
+[Discussions](https://github.com/asmiia/Dispatch/discussions). Please follow the
+[Code of Conduct](CODE_OF_CONDUCT.md), and report security problems privately as described in
+[SECURITY.md](SECURITY.md). See [CHANGELOG.md](CHANGELOG.md) for what changed between releases.
 
 ## License
 

@@ -79,7 +79,8 @@ export async function GET(request, { params }) {
       return new Response(exportTeam(sec, actor, team), {
         headers: {
           "Content-Type": "application/gzip",
-          "Content-Disposition": 'attachment; filename="dispatch-team-export.tar.gz"',
+          "Content-Disposition":
+            'attachment; filename="dispatch-team-export.tar.gz"',
           "Cache-Control": "private, no-store",
         },
       });
@@ -139,7 +140,13 @@ export async function POST(request, { params }) {
       const input = await jsonBody(request, 8192);
       if (route === "auth/register") {
         const user = await sec.register(input, validToken(input.setup_key));
-        acc.record({ ...meta, user_id: user.id, email: user.email, ok: true, method: "register" });
+        acc.record({
+          ...meta,
+          user_id: user.id,
+          email: user.email,
+          ok: true,
+          method: "register",
+        });
         return Response.json(user, {
           headers: { "Set-Cookie": login(request, user) },
         });
@@ -162,7 +169,13 @@ export async function POST(request, { params }) {
           mfa_required: true,
           challenge: acc.challenge(user.id),
         });
-      acc.record({ ...meta, user_id: user.id, email: user.email, ok: true, method: "password" });
+      acc.record({
+        ...meta,
+        user_id: user.id,
+        email: user.email,
+        ok: true,
+        method: "password",
+      });
       return Response.json(user, {
         headers: { "Set-Cookie": login(request, user) },
       });
@@ -173,10 +186,22 @@ export async function POST(request, { params }) {
       try {
         user = acc.completeChallenge(input.challenge, input.code);
       } catch (error) {
-        acc.record({ ...meta, email: "", ok: false, method: "mfa", reason: error.message });
+        acc.record({
+          ...meta,
+          email: "",
+          ok: false,
+          method: "mfa",
+          reason: error.message,
+        });
         throw error;
       }
-      acc.record({ ...meta, user_id: user.id, email: user.email, ok: true, method: "mfa" });
+      acc.record({
+        ...meta,
+        user_id: user.id,
+        email: user.email,
+        ok: true,
+        method: "mfa",
+      });
       return Response.json(user, {
         headers: { "Set-Cookie": login(request, user) },
       });
@@ -366,14 +391,26 @@ async function oauthRoute(request, sec, acc, name, step, url) {
     sec.rate("oauth:callback", 120, 300000);
     const who = await acc.identity(name, code, origin),
       user = acc.resolve(name, who);
-    acc.record({ ...meta, user_id: user.id, email: user.email, ok: true, method: name });
+    acc.record({
+      ...meta,
+      user_id: user.id,
+      email: user.email,
+      ok: true,
+      method: name,
+    });
     const headers = new Headers({ Location: origin + "/" });
     headers.append("Set-Cookie", login(request, user));
     headers.append("Set-Cookie", cookie("", 0));
     return new Response(null, { status: 302, headers });
   } catch (error) {
     if (!(error instanceof MailError)) throw error;
-    acc.record({ ...meta, email: "", ok: false, method: name, reason: error.message });
+    acc.record({
+      ...meta,
+      email: "",
+      ok: false,
+      method: name,
+      reason: error.message,
+    });
     return fail(error.message);
   }
 }

@@ -19,7 +19,8 @@ const read = () => {
 function apply(pref) {
   const light =
     pref === "light" ||
-    (pref === "system" && window.matchMedia("(prefers-color-scheme: light)").matches);
+    (pref === "system" &&
+      window.matchMedia("(prefers-color-scheme: light)").matches);
   document.documentElement.dataset.theme = light ? "light" : "dark";
 }
 

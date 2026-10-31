@@ -31,9 +31,21 @@ import Settings from "./settings";
 import Login from "./login";
 function DispatchMark({ size = 20 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <path d="M3 11 21 3l-8 18-2-8-8-2Z" fill="currentColor" />
-      <path className="mark-cut" d="m11 13 10-10" stroke="#f2f2f2" strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        className="mark-cut"
+        d="m11 13 10-10"
+        stroke="#f2f2f2"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -397,9 +409,7 @@ export default function Workspace() {
                 </span>
               )}
               {id === "unread" && (
-                <span className="count">
-                  {messages.filter(unread).length}
-                </span>
+                <span className="count">{messages.filter(unread).length}</span>
               )}
             </button>
           ))}
@@ -613,38 +623,38 @@ export default function Workspace() {
                     Conversation
                   </span>
                   <div className="reader-actions">
-                  <button
-                    className="subtle-button"
-                    disabled={!canWrite}
-                    onClick={() => compose(chosen)}
-                  >
-                    <CornerDownRight size={14} />
-                    Reply
-                  </button>
-                  {canDelete && (
                     <button
-                      className="subtle-button danger"
-                      title="Delete this conversation and files only attached to it"
-                      onClick={async () => {
-                        if (!confirmDelete) return setConfirmDelete(true);
-                        try {
-                          await api("messages/delete", {
-                            ids: thread.map((m) => m.id),
-                          });
-                          setConfirmDelete(false);
-                          setSelected("");
-                          setThread([]);
-                          refresh();
-                        } catch (e) {
-                          setError(e.message);
-                        }
-                      }}
-                      onBlur={() => setConfirmDelete(false)}
+                      className="subtle-button"
+                      disabled={!canWrite}
+                      onClick={() => compose(chosen)}
                     >
-                      <Trash2 size={14} />
-                      {confirmDelete ? "Confirm delete" : "Delete"}
+                      <CornerDownRight size={14} />
+                      Reply
                     </button>
-                  )}
+                    {canDelete && (
+                      <button
+                        className="subtle-button danger"
+                        title="Delete this conversation and files only attached to it"
+                        onClick={async () => {
+                          if (!confirmDelete) return setConfirmDelete(true);
+                          try {
+                            await api("messages/delete", {
+                              ids: thread.map((m) => m.id),
+                            });
+                            setConfirmDelete(false);
+                            setSelected("");
+                            setThread([]);
+                            refresh();
+                          } catch (e) {
+                            setError(e.message);
+                          }
+                        }}
+                        onBlur={() => setConfirmDelete(false)}
+                      >
+                        <Trash2 size={14} />
+                        {confirmDelete ? "Confirm delete" : "Delete"}
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="thread-scroll">
@@ -742,8 +752,8 @@ export default function Workspace() {
                 </div>
                 <h2>Your team, connected.</h2>
                 <p>
-                  Keep your agents’ conversations, updates, and files
-                  together in a secure workspace.
+                  Keep your agents’ conversations, updates, and files together
+                  in a secure workspace.
                 </p>
                 <button
                   className="subtle-button"
