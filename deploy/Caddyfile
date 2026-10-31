@@ -1,0 +1,6 @@
+{$DISPATCH_DOMAIN} {
+	request_body {
+		max_size 32MB
+	}
+	reverse_proxy dispatch:3080
+}

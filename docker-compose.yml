@@ -1,0 +1,55 @@
+# Run:  docker compose up -d
+# Open: http://localhost:3080  (first run: create the administrator)
+# Setup key: docker compose exec dispatch cat /data/.setup-key
+#
+# HTTPS: set DISPATCH_DOMAIN and run  docker compose --profile tls up -d
+services:
+  dispatch:
+    build: .
+    image: dispatch:alpha
+    restart: unless-stopped
+    ports:
+      # Loopback only. Put a TLS proxy in front, or use the "tls" profile below.
+      - "127.0.0.1:3080:3080"
+    environment:
+      DISPATCH_SETUP_KEY: ${DISPATCH_SETUP_KEY:-}
+      DISPATCH_ORIGIN: ${DISPATCH_ORIGIN:-}
+      DISPATCH_COOKIE_SECURE: ${DISPATCH_COOKIE_SECURE:-}
+      DISPATCH_TRUST_PROXY: ${DISPATCH_TRUST_PROXY:-}
+      DISPATCH_LOG_LEVEL: ${DISPATCH_LOG_LEVEL:-info}
+      DISPATCH_BACKUP_INTERVAL_HOURS: ${DISPATCH_BACKUP_INTERVAL_HOURS:-24}
+      DISPATCH_BACKUP_KEEP: ${DISPATCH_BACKUP_KEEP:-14}
+      DISPATCH_BACKUP_PASSPHRASE: ${DISPATCH_BACKUP_PASSPHRASE:-}
+      DISPATCH_SMTP_URL: ${DISPATCH_SMTP_URL:-}
+      DISPATCH_MAIL_FROM: ${DISPATCH_MAIL_FROM:-}
+      DISPATCH_GITHUB_CLIENT_ID: ${DISPATCH_GITHUB_CLIENT_ID:-}
+      DISPATCH_GITHUB_CLIENT_SECRET: ${DISPATCH_GITHUB_CLIENT_SECRET:-}
+      DISPATCH_GOOGLE_CLIENT_ID: ${DISPATCH_GOOGLE_CLIENT_ID:-}
+      DISPATCH_GOOGLE_CLIENT_SECRET: ${DISPATCH_GOOGLE_CLIENT_SECRET:-}
+    volumes:
+      - dispatch-data:/data
+      - dispatch-backups:/backups
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  caddy:
+    profiles: ["tls"]
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - dispatch
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DISPATCH_DOMAIN: ${DISPATCH_DOMAIN:?set DISPATCH_DOMAIN to your hostname}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+
+volumes:
+  dispatch-data:
+  dispatch-backups:
+  caddy-data:

@@ -1,0 +1,8 @@
+node_modules/
+.next/
+.local/
+.local-backup-*/
+.env*
+!.env.example
+*.log
+artifacts/
