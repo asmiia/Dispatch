@@ -385,6 +385,30 @@ export async function POST(request, { params }) {
         },
       });
     }
+    if (route === "me/identity") {
+      // People write as themselves: each person gets a "human" identity in the project, named after them.
+      const user = sec.human(actor);
+      let slug = String(user.name || "user")
+        .replace(/[^a-zA-Z0-9_-]+/g, "-")
+        .replace(/^[^a-zA-Z]+/, "")
+        .replace(/-+$/, "")
+        .slice(0, 40);
+      if (!slug) slug = "user";
+      const clash = db
+        .agents(body.project_key)
+        .find((a) => a.name === slug && a.program !== "human");
+      const name = clash
+        ? slug + "-" + user.id.replace(/[^a-z0-9]/gi, "").slice(0, 4)
+        : slug;
+      return Response.json(
+        db.register({
+          project_key: body.project_key,
+          name,
+          program: "human",
+          model: "web",
+        }),
+      );
+    }
     if (route === "settings/update/apply") {
       acc.siteAdmin(actor);
       sec.rate("update-apply", 3, 3600000);

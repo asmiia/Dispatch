@@ -5,6 +5,8 @@
   color-scheme: dark;
   --mark-bg: #f2f2f2;
   --c-000000: #000000;
+  --c-1f1f1f: #1f1f1f;
+  --c-3a3a3a: #3a3a3a;
   --c-000000aa: #000000aa;
   --c-000000bb: #000000bb;
   --c-000000cc: #000000cc;
@@ -98,6 +100,8 @@
   color-scheme: light;
   --mark-bg: #111111;
   --c-000000: #ffffff;
+  --c-1f1f1f: #e6e6e6;
+  --c-3a3a3a: #d1d1d1;
   --c-000000aa: #0000004c;
   --c-000000bb: #00000054;
   --c-000000cc: #0000005c;
@@ -1607,4 +1611,9 @@ a.subtle-button {
 .sidebar.compact .compose svg {
   margin: 0;
   display: block;
+}
+.compose-from {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }

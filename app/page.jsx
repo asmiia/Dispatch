@@ -156,6 +156,8 @@ export default function Workspace() {
       return;
     }
     try {
+      // The web app writes as the signed-in person, not as an agent.
+      const me = await api("me/identity", { project_key: project });
       const [people, mail, list, stars] = await Promise.all([
         api("agents?project=" + project),
         api("messages?project=" + project),
@@ -165,11 +167,7 @@ export default function Workspace() {
       setStarred(new Set(stars.threads));
       setProjects(list);
       setAgents(people);
-      setAgent((current) =>
-        people.some((a) => a.name === current)
-          ? current
-          : people[0]?.name || "",
-      );
+      setAgent(me.name);
       setMessages(mail);
     } catch (e) {
       if (e.status === 401) setAuthenticated(false);
@@ -241,18 +239,14 @@ export default function Workspace() {
       refresh();
     }
   }
-  const unread = (m) =>
-    m.recipients.some((r) => (!agent || r.name === agent) && !r.read_at);
+  const unread = (m) => m.recipients.some((r) => !r.read_at);
   const visible = messages.filter(
     (m) =>
       (folder === "starred"
         ? starred.has(m.thread_id)
-        : folder === "sent"
-          ? m.sender_name === agent
-          : folder === "files"
-            ? m.attachments.length
-            : (!agent || m.recipients.some((r) => r.name === agent)) &&
-              (folder !== "unread" || unread(m))) &&
+        : folder === "files"
+          ? m.attachments.length
+          : folder !== "unread" || unread(m)) &&
       `${m.subject} ${m.body} ${m.sender_name}`
         .toLowerCase()
         .includes(query.toLowerCase()),
@@ -332,7 +326,7 @@ export default function Workspace() {
         sender_name: agent,
       });
       setModal(null);
-      setFolder("sent");
+      setFolder("inbox");
       setSelected(m.id);
       await refresh();
     } catch (e) {
@@ -464,7 +458,6 @@ export default function Workspace() {
             ["inbox", Inbox, "Inbox"],
             ["unread", Mail, "Unread"],
             ["starred", Star, "Starred"],
-            ["sent", Send, "Sent"],
             ["files", Paperclip, "Attachments"],
           ].map(([id, Icon, label]) => (
             <button
@@ -480,13 +473,7 @@ export default function Workspace() {
               <Icon size={16} />
               <span className="nav-label">{label}</span>
               {id === "inbox" && (
-                <span className="count">
-                  {
-                    messages.filter((m) =>
-                      m.recipients.some((r) => r.name === agent),
-                    ).length
-                  }
-                </span>
+                <span className="count">{messages.length}</span>
               )}
               {id === "starred" && starred.size > 0 && (
                 <span className="count">{starred.size}</span>
@@ -576,28 +563,10 @@ export default function Workspace() {
               <kbd>Ctrl K</kbd>
             </div>
             <div className="list-meta">
-              <Select
-                aria-label="Viewing as"
-                className="agent-pick"
-                value={agent}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "__new") {
-                    setNewName("");
-                    setModal("agent");
-                  } else setAgent(v);
-                }}
-              >
-                {!agents.length && <option value="">No agents yet</option>}
-                {agents.map((a) => (
-                  <option key={a.id} value={a.name}>
-                    {a.name}
-                  </option>
-                ))}
-                {canWrite && project && (
-                  <option value="__new">+ Register agent</option>
-                )}
-              </Select>
+              <span>
+                {rows.length}{" "}
+                {rows.length === 1 ? "conversation" : "conversations"}
+              </span>
               <Select
                 aria-label="Sort"
                 className="sort-pick"

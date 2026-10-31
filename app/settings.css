@@ -530,8 +530,8 @@
   padding: 3px 11px;
 }
 .chip.warn {
-  color: #f5a97f;
-  border-color: #f5a97f55;
+  color: var(--t-f5a97f);
+  border-color: var(--c-f5a97f55);
 }
 .member-table {
   border: 1px solid var(--c-2e2e2e);
@@ -1204,10 +1204,10 @@
   background: var(--t-ededed);
 }
 .usage-bar i.hot {
-  background: #e5484d;
+  background: var(--c-e5484d);
 }
 .danger-card {
-  border-color: #e5484d55;
+  border-color: var(--c-e5484d55);
 }
 .inline-confirm {
   margin-top: 14px;
@@ -1249,7 +1249,7 @@
   color: var(--t-67c795);
 }
 .result.bad {
-  color: #e5484d;
+  color: var(--t-e5484d);
 }
 @media (max-width: 760px) {
   .activity-table .member-row {
@@ -1333,7 +1333,7 @@
 .settings-content .card form > .primary[disabled] {
   background: var(--c-1a1a1a);
   color: var(--t-a1a1a1);
-  border: 1px solid var(--c-3a3a3a, #3a3a3a);
+  border: 1px solid var(--c-3a3a3a, var(--c-3a3a3a));
   opacity: 1;
 }
 
@@ -1399,7 +1399,7 @@
   overflow: hidden;
   cursor: grab;
   touch-action: none;
-  background: #000;
+  background: var(--c-000000);
 }
 .photo-stage:active {
   cursor: grabbing;
@@ -1439,7 +1439,7 @@
 .photo-zoom input {
   flex: 1;
   height: auto;
-  accent-color: #ededed;
+  accent-color: var(--c-ededed);
 }
 .photo-dialog .photo-actions {
   display: flex;
@@ -1465,11 +1465,11 @@
 }
 .card {
   background: transparent;
-  border-color: var(--c-1f1f1f, #1f1f1f);
+  border-color: var(--c-1f1f1f, var(--c-1f1f1f));
 }
 .profile-card {
   background: transparent;
-  border-color: var(--c-1f1f1f, #1f1f1f);
+  border-color: var(--c-1f1f1f, var(--c-1f1f1f));
 }
 .settings-content .card label.field > span {
   color: var(--t-a1a1a1);
@@ -1598,7 +1598,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 11px 0;
-  border-bottom: 1px solid var(--c-1f1f1f, #1f1f1f);
+  border-bottom: 1px solid var(--c-1f1f1f, var(--c-1f1f1f));
   font-size: 13.5px;
 }
 .kv > div:last-child {
@@ -1712,7 +1712,7 @@
   padding: 16px;
   gap: 5px;
   background: transparent;
-  border-color: var(--c-1f1f1f, #1f1f1f);
+  border-color: var(--c-1f1f1f, var(--c-1f1f1f));
   border-radius: 12px;
 }
 .stat span {
@@ -1727,7 +1727,7 @@
 }
 .chart-grid > * {
   background: transparent;
-  border-color: var(--c-1f1f1f, #1f1f1f);
+  border-color: var(--c-1f1f1f, var(--c-1f1f1f));
   border-radius: 12px;
 }
 @media (max-width: 900px) {
@@ -1752,4 +1752,13 @@
 }
 .stat-grid.overview-stats > .stat:last-child:nth-child(4n + 3) {
   grid-column: span 2;
+}
+.settings-content .card form > .primary:not([disabled]),
+.card .menu-actions .primary:not([disabled]) {
+  color: var(--t-ededed) !important;
+}
+.card .primary:disabled,
+.card button.primary[disabled] {
+  color: var(--t-a1a1a1) !important;
+  opacity: 0.6 !important;
 }

@@ -131,7 +131,8 @@ export default function Conversation({
       ...everyone
         .reduce((map, name) => {
           const a = agentOf(name),
-            owner = a?.owner_name || "No owner";
+            owner =
+              a?.program === "human" ? "People" : a?.owner_name || "No owner";
           map.set(owner, [...(map.get(owner) || []), { name, a }]);
           return map;
         }, new Map())
