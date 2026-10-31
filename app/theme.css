@@ -1771,3 +1771,11 @@ a.subtle-button {
   align-self: center;
   transform: none;
 }
+.m-avatar,
+.m-avatar.ghost {
+  border-radius: 9px;
+}
+.member-row .u-avatar {
+  width: 38px;
+  height: 38px;
+}

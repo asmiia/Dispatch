@@ -1,4 +1,5 @@
 "use client";
+import UserAvatar from "./user-avatar";
 import { useState } from "react";
 import { Check, Copy, Link2, Plus, Trash2, UserPlus, X } from "lucide-react";
 import Select from "./select";
@@ -187,9 +188,7 @@ export default function Members({ data, team, admin, owner, run, busy }) {
           .map((m) => (
             <div className="member-row" role="row" key={m.id}>
               <div className="member-who">
-                <span className="m-avatar" aria-hidden="true">
-                  {initials(m.name)}
-                </span>
+                <UserAvatar id={m.id} name={m.name} v={m.avatar_v} size={38} />
                 <div>
                   <strong>
                     {m.name}
