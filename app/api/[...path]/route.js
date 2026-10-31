@@ -19,6 +19,13 @@ import {
   providers,
 } from "../../../lib/accounts.mjs";
 import { mailEnabled } from "../../../lib/mailer.mjs";
+import {
+  deleteMessagesAs,
+  deleteProjectAs,
+  deleteTeamAs,
+  exportAccount,
+  exportTeam,
+} from "../../../lib/deletion.mjs";
 import { backupStatus, runBackup } from "../../../lib/backup-scheduler.mjs";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,6 +61,29 @@ export async function GET(request, { params }) {
       return Response.json(acc.mfaStatus(actor));
     if (path.join("/") === "settings/activity")
       return Response.json(acc.activity(actor));
+    if (path.join("/") === "settings/sessions")
+      return Response.json(acc.sessions(actor));
+    if (path.join("/") === "settings/export/account") {
+      sec.rate("export:" + actor.id, 10, 3600000);
+      return new Response(JSON.stringify(exportAccount(sec, actor), null, 2), {
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Disposition": 'attachment; filename="dispatch-account.json"',
+          "Cache-Control": "private, no-store",
+        },
+      });
+    }
+    if (path.join("/") === "settings/export/team") {
+      sec.rate("export:" + actor.id, 10, 3600000);
+      const team = url.searchParams.get("team");
+      return new Response(exportTeam(sec, actor, team), {
+        headers: {
+          "Content-Type": "application/gzip",
+          "Content-Disposition": 'attachment; filename="dispatch-team-export.tar.gz"',
+          "Cache-Control": "private, no-store",
+        },
+      });
+    }
     if (path.join("/") === "settings/backups") {
       acc.siteAdmin(actor);
       return Response.json(await backupStatus());
@@ -191,6 +221,42 @@ export async function POST(request, { params }) {
         trustedOrigin(request),
       );
       return Response.json({ ...result, emailed });
+    }
+    if (route === "settings/sessions/revoke") {
+      const result = acc.revokeSession(actor, body.id);
+      return Response.json(result, {
+        headers: result.signed_out
+          ? {
+              "Set-Cookie":
+                "dispatch_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0",
+            }
+          : {},
+      });
+    }
+    if (route === "settings/sessions/revoke-others")
+      return Response.json(acc.revokeOtherSessions(actor));
+    if (route === "settings/team/retention")
+      return Response.json(sec.setRetention(actor, body));
+    if (route === "messages/delete")
+      return Response.json(deleteMessagesAs(sec, actor, body.ids));
+    if (route === "projects/delete")
+      return Response.json(
+        deleteProjectAs(sec, actor, body.project_key, body.confirm),
+      );
+    if (route === "settings/teams/delete")
+      return Response.json(
+        deleteTeamAs(sec, actor, body.team_id, body.confirm),
+      );
+    if (route === "settings/user/delete")
+      return Response.json(acc.deleteUserAs(actor, body.user_id));
+    if (route === "settings/account/delete") {
+      const result = await acc.deleteOwnAccount(actor, body);
+      return Response.json(result, {
+        headers: {
+          "Set-Cookie":
+            "dispatch_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0",
+        },
+      });
     }
     if (route === "settings/backups/run") {
       acc.siteAdmin(actor);

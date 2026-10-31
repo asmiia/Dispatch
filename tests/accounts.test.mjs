@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { base32, code, verify } from "../lib/totp.mjs";
@@ -55,6 +55,8 @@ test(
           DISPATCH_BACKUP_INTERVAL_HOURS: "24",
           DISPATCH_GITHUB_CLIENT_ID: "test-client",
           DISPATCH_GITHUB_CLIENT_SECRET: "test-secret",
+          // Emails are written to this file instead of being sent.
+          DISPATCH_MAIL_FILE: dir + "-mail.jsonl",
           DISPATCH_LOG_LEVEL: "error",
         },
         stdio: "pipe",
@@ -87,7 +89,7 @@ test(
         });
       const status = await (await req("/api/auth/status")).json();
       assert.deepEqual(status.oauth, ["github"]);
-      assert.equal(status.email, false);
+      assert.equal(status.email, true);
 
       const password = "correct horse battery 1";
       const reg = await req("/api/auth/register", {
@@ -98,6 +100,23 @@ test(
       });
       assert.equal(reg.status, 200);
       const cookie = { Cookie: reg.headers.get("set-cookie").split(";")[0] };
+
+      // Sessions: list devices, sign one out, sign out all the others.
+      const login2 = await req("/api/auth", { email: "admin@example.com", password });
+      const cookie2 = { Cookie: login2.headers.get("set-cookie").split(";")[0] };
+      const devices = await (await req("/api/settings/sessions", null, cookie)).json();
+      assert.equal(devices.length, 2);
+      assert.equal(devices.filter((d) => d.current).length, 1);
+      assert.equal((await req("/api/settings/sessions/revoke", { id: "0000000000000000" }, cookie)).status, 404);
+      const other = devices.find((d) => !d.current);
+      assert.equal((await req("/api/settings/sessions/revoke", { id: other.id }, cookie)).status, 200);
+      assert.equal((await req("/api/me", null, cookie2)).status, 401);
+      const login3 = await req("/api/auth", { email: "admin@example.com", password });
+      const cookie3 = { Cookie: login3.headers.get("set-cookie").split(";")[0] };
+      const cut = await (await req("/api/settings/sessions/revoke-others", {}, cookie)).json();
+      assert.equal(cut.revoked, 1);
+      assert.equal((await req("/api/me", null, cookie3)).status, 401);
+      assert.equal((await req("/api/me", null, cookie)).status, 200);
 
       // Failed sign-ins are rejected and show up in the admin activity view.
       assert.equal((await req("/api/auth", { email: "admin@example.com", password: "nope nope nope" })).status, 401);
@@ -159,7 +178,14 @@ test(
       const invite = await (
         await req("/api/settings/invite", { team_id: team, email: "dev@example.com", role: "member" }, cookie)
       ).json();
-      assert.equal(invite.emailed, false);
+      assert.equal(invite.emailed, true);
+      const mails = () =>
+        existsSync(dir + "-mail.jsonl")
+          ? readFileSync(dir + "-mail.jsonl", "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l))
+          : [];
+      const inviteMail = mails().at(-1);
+      assert.equal(inviteMail.to, "dev@example.com");
+      assert.ok(inviteMail.text.includes("/?invite=" + encodeURIComponent(invite.code)));
       const joined = await req("/api/auth/register", {
         email: "dev@example.com",
         name: "Dev",
@@ -175,6 +201,24 @@ test(
           (e) => !/^(key|personal_key|invitation|team|instance|user|account|mfa|password|oauth)\./.test(e.action),
         ),
         JSON.stringify(memberFeed.events.map((e) => e.action)),
+      );
+      // Members can export their own data but not the team's, and cannot delete conversations.
+      assert.equal((await req("/api/settings/export/account", null, memberCookie)).status, 200);
+      assert.equal((await req(`/api/settings/export/team?team=${team}`, null, memberCookie)).status, 403);
+      const projectId = (await (await req("/api/projects", { name: "demo" }, cookie)).json()).id;
+      for (const name of ["Navy", "Ice"])
+        await req("/api/agents", { project_key: projectId, name, program: "x", model: "y" }, cookie);
+      const sent = await (
+        await req("/api/messages", { project_key: projectId, sender_name: "Navy", to: ["Ice"], subject: "hello", body_md: "body" }, cookie)
+      ).json();
+      assert.equal((await req("/api/messages/delete", { ids: [sent.id] }, memberCookie)).status, 403);
+      const gz = Buffer.from(await (await req(`/api/settings/export/team?team=${team}`, null, cookie)).arrayBuffer());
+      assert.deepEqual([...gz.subarray(0, 2)], [0x1f, 0x8b]);
+      assert.equal((await req("/api/messages/delete", { ids: [sent.id] }, cookie)).status, 200);
+      assert.equal((await req("/api/messages/delete", { ids: [sent.id] }, cookie)).status, 404);
+      assert.equal(
+        (await req("/api/projects/delete", { project_key: projectId, confirm: "demo" }, cookie)).status,
+        200,
       );
       assert.equal((await req("/api/settings/backups", null, memberCookie)).status, 403);
       assert.equal((await req("/api/settings/backups/run", {}, memberCookie)).status, 403);
@@ -198,6 +242,39 @@ test(
       // Forgot-password never reveals whether an account exists.
       const forgot = await req("/api/auth/forgot", { email: "nobody@example.com" });
       assert.equal(forgot.status, 200);
+      const mailsBefore = mails().length;
+      // Reset by emailed link: the response is the same either way, and only real accounts get mail.
+      assert.equal((await req("/api/auth/forgot", { email: "dev@example.com" })).status, 200);
+      await new Promise((r) => setTimeout(r, 300));
+      assert.equal(mails().length, mailsBefore + 1);
+      const resetMail = mails().at(-1);
+      assert.equal(resetMail.to, "dev@example.com");
+      const emailed = decodeURIComponent(resetMail.text.match(/\/\?reset=([^\s]+)/)[1]);
+      assert.equal((await req("/api/auth/reset", { code: emailed, password: "emailed reset password 4" })).status, 200);
+      assert.equal((await req("/api/auth", { email: "dev@example.com", password: "emailed reset password 4" })).status, 200);
+
+      // Account deletion needs the password and the typed email, and removes the account.
+      const devCookie = {
+        Cookie: (await req("/api/auth", { email: "dev@example.com", password: "emailed reset password 4" })).headers
+          .get("set-cookie")
+          .split(";")[0],
+      };
+      assert.equal(
+        (await req("/api/settings/account/delete", { password: "wrong", confirm: "dev@example.com" }, devCookie)).status,
+        403,
+      );
+      assert.equal(
+        (await req("/api/settings/account/delete", { password: "emailed reset password 4", confirm: "nope" }, devCookie)).status,
+        400,
+      );
+      const gone = await req(
+        "/api/settings/account/delete",
+        { password: "emailed reset password 4", confirm: "dev@example.com" },
+        devCookie,
+      );
+      assert.equal(gone.status, 200);
+      assert.match(gone.headers.get("set-cookie"), /Max-Age=0/);
+      assert.equal((await req("/api/auth", { email: "dev@example.com", password: "emailed reset password 4" })).status, 401);
 
       // Change feed: ordered, resumable, and empty once caught up.
       const feed = await (await req("/api/events?after=0", null, cookie)).json();
@@ -236,6 +313,7 @@ test(
       await new Promise((r) => setTimeout(r, 300));
       rmSync(dir, { recursive: true, force: true });
       rmSync(dir + "-backups", { recursive: true, force: true });
+      rmSync(dir + "-mail.jsonl", { force: true });
     }
   },
 );

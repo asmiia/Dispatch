@@ -3,6 +3,7 @@ import Coordination from "./coordination";
 import Security from "./security";
 import Activity from "./activity";
 import Backups from "./backups";
+import { AccountData, TeamData } from "./data";
 import { ThemeSwitch } from "./theme-toggle";
 import Select from "./select";
 import { useEffect, useState } from "react";
@@ -60,7 +61,8 @@ export default function Settings({ onClose, onChanged, project, agents }) {
     [keyAgent, setKeyAgent] = useState(""),
     [keyName, setKeyName] = useState(""),
     [password, setPassword] = useState(""),
-    [currentPassword, setCurrentPassword] = useState("");
+    [currentPassword, setCurrentPassword] = useState(""),
+    [delUser, setDelUser] = useState("");
   async function load(id = team) {
     try {
       const d = await api("settings" + (id ? "?team=" + id : ""));
@@ -270,6 +272,7 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                         Sign out
                       </button>
                     </form>
+                    <AccountData api={api} user={data.user} />
                   </>
                 )}
                 {tab === "security" && <Security api={api} />}
@@ -356,6 +359,21 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                         Accept invitation
                       </button>
                     </form>
+                    {admin && (
+                      <TeamData
+                        key={team}
+                        api={api}
+                        team={team}
+                        teamName={teamName}
+                        role={data.role}
+                        projects={data.projects || []}
+                        retention={data.teams.find((t) => t.id === team)?.retention_days || 0}
+                        onChanged={async () => {
+                          await load("");
+                          await onChanged();
+                        }}
+                      />
+                    )}
                   </>
                 )}
                 {tab === "members" && (
@@ -643,7 +661,12 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                           <div>
                             <strong>{a.action}</strong>
                             <span>
-                              {a.actor_name || "Agent"} ·{" "}
+                              {a.actor_name ||
+                                (a.actor_id === "deleted"
+                                  ? "Deleted user"
+                                  : a.actor_id === "system"
+                                    ? "System"
+                                    : "Agent")} ·{" "}
                               {new Date(a.created_at).toLocaleString()}
                             </span>
                           </div>
@@ -698,6 +721,18 @@ export default function Settings({ onClose, onChanged, project, agents }) {
                             }
                           >
                             {u.disabled ? "Enable" : "Disable"}
+                          </button>
+                          <button
+                            className="subtle-button danger"
+                            disabled={u.id === data.user.id}
+                            onClick={async () => {
+                              if (delUser !== u.id) return setDelUser(u.id);
+                              setDelUser("");
+                              await run("user/delete", { user_id: u.id });
+                            }}
+                          >
+                            <Trash2 size={13} />
+                            {delUser === u.id ? "Confirm delete" : "Delete"}
                           </button>
                         </div>
                       ))}

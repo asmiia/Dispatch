@@ -23,6 +23,7 @@ import {
   CheckCheck,
   ArrowLeft,
   Check,
+  Trash2,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -113,6 +114,7 @@ export default function Workspace() {
     [uploading, setUploading] = useState(false);
   const fileInput = useRef(null),
     searchInput = useRef(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const refreshProjects = useCallback(async () => {
     try {
       const [list, me] = await Promise.all([api("projects"), api("me")]);
@@ -189,6 +191,7 @@ export default function Workspace() {
     role = user?.teams?.find((t) => t.id === current?.team_id)?.role;
   const canWrite =
       !!user?.site_admin || ["owner", "admin", "member"].includes(role),
+    canDelete = !!user?.site_admin || ["owner", "admin"].includes(role),
     canManage =
       !!user?.site_admin ||
       user?.teams?.some((t) => ["owner", "admin"].includes(t.role));
@@ -609,6 +612,7 @@ export default function Workspace() {
                     <MessageSquare size={14} />
                     Conversation
                   </span>
+                  <div className="reader-actions">
                   <button
                     className="subtle-button"
                     disabled={!canWrite}
@@ -617,6 +621,31 @@ export default function Workspace() {
                     <CornerDownRight size={14} />
                     Reply
                   </button>
+                  {canDelete && (
+                    <button
+                      className="subtle-button danger"
+                      title="Delete this conversation and files only attached to it"
+                      onClick={async () => {
+                        if (!confirmDelete) return setConfirmDelete(true);
+                        try {
+                          await api("messages/delete", {
+                            ids: thread.map((m) => m.id),
+                          });
+                          setConfirmDelete(false);
+                          setSelected("");
+                          setThread([]);
+                          refresh();
+                        } catch (e) {
+                          setError(e.message);
+                        }
+                      }}
+                      onBlur={() => setConfirmDelete(false)}
+                    >
+                      <Trash2 size={14} />
+                      {confirmDelete ? "Confirm delete" : "Delete"}
+                    </button>
+                  )}
+                  </div>
                 </div>
                 <div className="thread-scroll">
                   <div className="thread-heading">

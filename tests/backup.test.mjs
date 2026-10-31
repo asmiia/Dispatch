@@ -123,3 +123,29 @@ test("the encryption key is sealed with a passphrase and needs it to restore", a
     for (const d of [data, root, target]) rmSync(d, { recursive: true, force: true });
   }
 });
+
+test("deleted attachments leave the backup mirror once no retained snapshot refers to them", async () => {
+  const data = tmp(),
+    root = tmp();
+  let store;
+  try {
+    store = new MailStore(data);
+    store.ensureProject("alpha");
+    const file = store.upload("alpha", "secret.txt", Buffer.from("delete me"));
+    await withEnv({ DISPATCH_BACKUP_KEEP: "2" }, async () => {
+      await createBackup(data, { db: store.db, root });
+      store.db.prepare("DELETE FROM attachments WHERE id=?").run(file.id);
+      rmSync(join(data, "files", file.id));
+      await createBackup(data, { db: store.db, root });
+      // The first snapshot still lists the file, so it is kept for restores.
+      assert.ok(existsSync(join(root, "files", file.id)));
+      const last = await createBackup(data, { db: store.db, root });
+      // Now the oldest snapshot has aged out and nothing refers to the file.
+      assert.equal(last.purged, 1);
+      assert.ok(!existsSync(join(root, "files", file.id)));
+    });
+  } finally {
+    store?.db.close();
+    for (const d of [data, root]) rmSync(d, { recursive: true, force: true });
+  }
+});

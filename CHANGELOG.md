@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.2.0-alpha
+
+### Your data
+- Delete conversations, projects, teams and accounts (confirmed by typing the name),
+  including files only those messages used. Admin-only; owners protected from orphaning a team.
+- Export your account data, or a whole team as a `.tar.gz` (messages and attachments).
+- Per-team message retention and audit-log retention (`DISPATCH_AUDIT_RETENTION_DAYS`).
+- Attachments deleted from Dispatch are purged from the backup mirror once no retained
+  snapshot refers to them.
+
+### Sessions
+- Settings > Security lists signed-in devices, signs one out, or signs out all others.
+
+### Operations
+- Instance administrators are emailed when a backup fails or none has succeeded for twice
+  the schedule (at most once every 12 hours).
+- `DISPATCH_MAIL_FILE` writes email to a file for development and tests.
+- Published image at `ghcr.io/asmiia/dispatch` (amd64 and arm64) on every release tag, and
+  `docker-compose.ghcr.yml` to run it.
+
+### Fixes
+- A failed backup folder no longer breaks the Backups page.
+
 ## 0.1.0-alpha
 
 First public alpha.

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, Copy, Loader2, ShieldCheck, Smartphone } from "lucide-react";
+import { Check, Copy, Laptop, Loader2, LogOut, ShieldCheck, Smartphone } from "lucide-react";
 
 function Qr({ rows }) {
   const n = rows.length;
@@ -19,6 +19,77 @@ function Qr({ rows }) {
         ),
       )}
     </svg>
+  );
+}
+
+const device = (ua) => {
+  if (!ua) return "Unknown device";
+  const browser = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "Browser";
+  const os = /Windows/.test(ua) ? "Windows" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Mac OS/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "";
+  return os ? `${browser} on ${os}` : browser;
+};
+const ago = (iso) => {
+  if (!iso) return "unknown";
+  const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
+  return s < 90 ? "just now" : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129600 ? `${Math.round(s / 3600)} h ago` : new Date(iso).toLocaleDateString();
+};
+
+// Devices signed in to this account, with the option to sign any of them out.
+function Sessions({ api }) {
+  const [rows, setRows] = useState(null),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  const load = () => api("settings/sessions").then(setRows).catch((e) => setError(e.message));
+  useEffect(() => {
+    load();
+  }, []);
+  async function act(path, body) {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await api(path, body);
+      if (r.signed_out) return window.location.reload();
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (!rows) return error ? <div className="error" role="alert">{error}</div> : <Loader2 className="spin" size={20} />;
+  return (
+    <>
+      <h4>Active sessions</h4>
+      <div className="settings-rows">
+        {rows.map((r) => (
+          <div className="settings-row" key={r.id}>
+            <div>
+              <strong>
+                <Laptop size={13} style={{ marginRight: 8, verticalAlign: -2 }} />
+                {device(r.ua)}
+                {r.current ? " · This device" : ""}
+              </strong>
+              <span>
+                Active {ago(r.last_seen || r.created_at)} · signed in {ago(r.created_at)}
+                {r.ip ? ` · ${r.ip}` : ""}
+              </span>
+            </div>
+            {!r.current && (
+              <button className="subtle-button" disabled={busy} onClick={() => act("settings/sessions/revoke", { id: r.id })}>
+                <LogOut size={13} />
+                Sign out
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+      {rows.length > 1 && (
+        <button className="subtle-button" disabled={busy} onClick={() => act("settings/sessions/revoke-others", {})}>
+          Sign out all other sessions
+        </button>
+      )}
+      {error && <div className="error" role="alert">{error}</div>}
+    </>
   );
 }
 
@@ -189,6 +260,7 @@ export default function Security({ api }) {
           {error}
         </div>
       )}
+      <Sessions api={api} />
     </>
   );
 }

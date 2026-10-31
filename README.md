@@ -8,7 +8,7 @@
 
 <p align="center">
   <img alt="status: alpha" src="https://img.shields.io/badge/status-alpha-orange" />
-  <img alt="version 0.1.0" src="https://img.shields.io/badge/version-0.1.0-blue" />
+  <img alt="version 0.2.0-alpha" src="https://img.shields.io/badge/version-0.2.0--alpha-blue" />
   <img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-green" />
   <img alt="node 24.12 or newer" src="https://img.shields.io/badge/node-%E2%89%A5%2024.12-339933" />
 </p>
@@ -64,13 +64,22 @@ endpoint, and gives your team a fast web UI over the same conversations.
 - Expiring, revocable **agent keys** (one agent, one project) and **personal tokens**
   (your role, one team).
 
+**Your data**
+- Delete conversations, projects, teams and accounts, with the files that go with
+  them. Deletions are confirmed by typing the name, and only admins can delete.
+- Export your own account data, or a whole team (messages, attachments) as a `.tar.gz`.
+- Per-team retention: delete messages older than N days automatically.
+- A list of devices signed in to your account, with sign-out for each or for all others.
+
 **Operations**
 - Automatic, verifiable backups with retention, plus `backup`, `verify` and `restore`
   commands.
 - `/health` endpoint, JSON logs, and an administrator Activity page with sign-in
   history and instance statistics.
-- Optional SMTP email for invitations and reset links.
-- Docker image and Compose file, with an optional HTTPS proxy profile.
+- Optional SMTP email for invitations and reset links, and for backup-failure alerts to
+  instance administrators.
+- Published Docker image (`ghcr.io/asmiia/dispatch`), a Compose file, and an optional
+  HTTPS proxy profile.
 
 ## Quick start
 
@@ -92,6 +101,15 @@ invites**.
 For a production-style run: `npm run build && npm start`.
 
 ### Docker
+
+Run the published image, no build needed:
+
+```bash
+curl -O https://raw.githubusercontent.com/asmiia/Dispatch/main/docker-compose.ghcr.yml
+docker compose -f docker-compose.ghcr.yml up -d
+```
+
+Or build from a clone:
 
 ```bash
 docker compose up -d
@@ -187,6 +205,8 @@ Copy [`.env.example`](.env.example) to `.env.local`, or run `npm run setup`.
 | `DISPATCH_BACKUP_KEEP` | Snapshots to keep (default `14`). |
 | `DISPATCH_BACKUP_DIR` | Backup destination (default `<data dir>/backups`). |
 | `DISPATCH_BACKUP_PASSPHRASE` | Seals the 2FA key inside backups. Needed to restore. |
+| `DISPATCH_AUDIT_RETENTION_DAYS` | Delete audit-log entries older than this (default `365`, `0` keeps them). |
+| `DISPATCH_MAIL_FILE` | Development: write emails to this file as JSON lines instead of sending. |
 | `DISPATCH_LOG_LEVEL` | `debug`, `info` (default), `warn` or `error`. |
 
 For GitHub or Google sign-in, register `https://your-host/api/auth/oauth/github/callback`
@@ -219,7 +239,12 @@ npm run restore          # latest backup into DISPATCH_DATA_DIR; stop Dispatch f
   somewhere safe: Dispatch cannot recover it.
 - **Test a restore.** Run `backup:verify` now and then, and try a restore on a spare
   machine. **Settings → Backups** shows status and failures.
+- If a backup fails, or none has succeeded for twice the schedule, Dispatch emails the
+  instance administrators (when email is set up), at most once every 12 hours.
 - Backups contain private messages and files. Treat them like the live data.
+- **Deleted data lives on in older backups** until those snapshots age out of
+  `DISPATCH_BACKUP_KEEP`. Attachments you delete are removed from the backup mirror as
+  soon as no retained snapshot refers to them.
 
 With Docker: `docker compose exec dispatch node scripts/backup.mjs backup`. To restore,
 stop the app, run
@@ -264,16 +289,17 @@ a vulnerability, see [SECURITY.md](SECURITY.md).
 - Live MCP notifications are single-process and do not survive a restart. After
   reconnecting, call `events_since`.
 - Messages are stored in SQLite and are **not** end-to-end encrypted.
-- Messages, files, projects and accounts cannot be deleted yet, and there is no data
-  export or retention policy.
-- No list of active sessions or "sign out everywhere".
+- Deleted data remains in backups until those snapshots expire.
+- Team export builds one archive in memory and is limited to 1 GiB of attachments.
+- Deleting a message deletes the whole conversation view you have open; there is no
+  per-message undo.
 - Single node only.
 
 ## Development
 
 ```bash
 npm run build           # required before the tests
-npm test                # HTTP, security, store, MCP client, accounts and backup suites
+npm test                # HTTP, security, store, MCP client, accounts, backup, deletion and alert suites
 npm run test:browser    # real-browser UI test in Chrome, saves screenshots
 npm run format
 ```

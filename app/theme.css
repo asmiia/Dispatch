@@ -224,3 +224,38 @@
   background: var(--c-1a1a1a);
   color: var(--t-ededed);
 }
+
+.subtle-button.danger {
+  color: #e5484d;
+}
+.subtle-button.danger:hover:not(:disabled) {
+  background: #241111;
+  border-color: #e5484d;
+}
+:root[data-theme="light"] .subtle-button.danger {
+  color: #b4232a;
+}
+:root[data-theme="light"] .subtle-button.danger:hover:not(:disabled) {
+  background: #fdecec;
+  border-color: #b4232a;
+}
+.danger-zone {
+  display: grid;
+  gap: 6px;
+  margin-top: 28px;
+  padding: 16px;
+  border: 1px solid var(--c-2e2e2e);
+  border-radius: 8px;
+}
+.danger-zone h4 {
+  margin-top: 0;
+}
+a.subtle-button {
+  text-decoration: none;
+  width: fit-content;
+}
+.reader-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
