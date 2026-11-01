@@ -169,7 +169,7 @@ function trust() {
             }
           : {},
       );
-    } catch {
+    } catch (e) { console.log("SHAREERR", e && e.stack);
       callback({});
     }
   });
@@ -287,7 +287,7 @@ function makeTray() {
         : {
             label: `Check for updates (version ${app.getVersion()})`,
             enabled: !!updater,
-            click: () => updater?.checkForUpdates().catch(() => {}),
+            click: () => ((manualCheck = true), updater?.checkForUpdates().catch(() => {})),
           },
       {
         label: "Change server...",
@@ -454,6 +454,7 @@ app.on("open-url", (event, link) => {
 // Self-update: the app checks the server it is connected to (the installers it hands out) and installs a newer
 // version in the background. Only the installed build can do this; the portable one cannot replace itself.
 let updater = null,
+  manualCheck = false,
   updateReady = "";
 function setupUpdates() {
   if (!app.isPackaged || !serverUrl()) return;
@@ -468,7 +469,20 @@ function setupUpdates() {
   });
   updater.autoDownload = true;
   updater.autoInstallOnAppQuit = true;
-  updater.on("error", () => {});
+  updater.on("error", (e) => {
+    const msg = String((e && e.message) || e).slice(0, 300);
+    try { require("fs").appendFileSync(require("path").join(app.getPath("userData"), "update.log"), new Date().toISOString() + " " + msg + "\n"); } catch {}
+    if (manualCheck) new Notification({ title: "Update failed", body: msg, icon: icon() }).show();
+    manualCheck = false;
+  });
+  updater.on("update-not-available", () => {
+    if (manualCheck) new Notification({ title: "Dispatch is up to date", body: `Version ${app.getVersion()}`, icon: icon() }).show();
+    manualCheck = false;
+  });
+  updater.on("update-available", (i) => {
+    if (manualCheck) new Notification({ title: "Downloading update", body: `Version ${i.version}`, icon: icon() }).show();
+    manualCheck = false;
+  });
   updater.on("update-downloaded", (info) => {
     updateReady = info.version;
     new Notification({

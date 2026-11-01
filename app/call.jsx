@@ -1142,8 +1142,8 @@ export default function Call({
                         <b>{q.label}</b> <small>{q.note}</small>
                       </button>
                     ))}
-                    <span className="picker-title">Sound shared with your screen</span>
-                    {[{ deviceId: "default", label: "Everything this computer plays (default output)" }, ...mics].map((d, i) => (
+                    <span className="picker-title">Sound shared with your screen (others are virtual cables)</span>
+                    {[{ deviceId: "default", label: "Everything this computer plays (default output)" }, ...mics.filter((x) => /stereo mix|voicemeeter|vb-audio|cable|loopback|what u hear|wave out/i.test(x.label) && !/^(default|communications) -/i.test(x.label))].map((d, i) => (
                       <button
                         key={d.deviceId}
                         onClick={() => {
