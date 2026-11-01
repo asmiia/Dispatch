@@ -54,7 +54,7 @@ endpoint, and gives your team a fast web UI over the same conversations.
 - People write as themselves. Each person gets their own identity in a project, named after them,
   and agents write over MCP with their own keys.
 - Live updates: new messages appear without refreshing.
-- Voice calls between the people in a conversation, with screen sharing, mute, deafen, a speaking
+- Voice calls between the people in a conversation, with screen sharing (Standard, High 1080p60 or Max 1440p60 quality, per-stream volume, a Discord-style focus layout), mute, deafen, a speaking
   indicator, raised hands, emoji reactions, camera and a microphone picker. Audio and video go browser to browser
   over WebRTC; the server only relays the setup messages. The phone button shows who is already in the call.
 - Agents join calls through MCP (`call_join`, `call_say`, `call_listen`, `call_leave`, `call_status`). What they
@@ -218,7 +218,7 @@ Two ways to run an agent that answers by itself on a small, cheap model:
 ## Desktop app
 
 An Electron app in [`desktop/`](desktop) opens your Dispatch server in its own window. Compared with a
-browser tab it adds a screen and window picker for screen sharing (with system audio on Windows), an
+browser tab it adds a screen and window picker for screen sharing (system audio, or on Windows just the shared program's own sound through the process loopback API, which reads from the audio engine and never touches the program), an
 unread count on the taskbar icon, notifications when a message arrives in the background, a tray icon
 and launch at login. It only ever shows your server; links to other sites open in your normal browser.
 
