@@ -182,7 +182,7 @@ export default function Call({
     };
     const attach = (e, kind, capture) => {
       const video = lane(e, kind, capture.getVideoTracks()[0], kind);
-      if (video) tune(video, kind === "screen" ? 8e6 : 2.5e6);
+      if (video) tune(video, kind === "screen" ? 5e6 : 2.5e6);
       // System audio from a shared screen travels with it.
       lane(e, kind + "Audio", capture.getAudioTracks()[0], kind);
     };
@@ -227,6 +227,11 @@ export default function Call({
         }
       };
       pc.ontrack = (e) => {
+        // Keep the viewing delay short instead of buffering a few seconds of video.
+        try {
+          e.receiver.jitterBufferTarget = 40;
+          e.receiver.playoutDelayHint = 0.04;
+        } catch {}
         if (e.track.kind === "video") {
           const stream = e.streams[0] || new MediaStream([e.track]);
           entry.streams.add(stream.id);
@@ -354,7 +359,10 @@ export default function Call({
             const p = sender.getParameters();
             if (!p.encodings?.length) p.encodings = [{}];
             p.encodings[0].maxBitrate = bps;
-            p.degradationPreference = "maintain-resolution";
+            p.degradationPreference = "balanced";
+            p.encodings[0].maxFramerate = 60;
+            p.encodings[0].priority = "high";
+            p.encodings[0].networkPriority = "high";
             sender.setParameters(p).catch(() => {});
           } catch {}
         }, wait);
@@ -366,7 +374,7 @@ export default function Call({
         r[kind] = s;
         const track = s.getVideoTracks()[0];
         track.onended = () => stopVideo(kind, setter);
-        track.contentHint = kind === "screen" ? "detail" : "motion";
+        track.contentHint = "motion";
         // The desktop app's screen picker lets you choose a quality; apply it to the capture.
         if (kind === "screen" && window.dispatchDesktop?.shareQuality)
           window.dispatchDesktop
@@ -519,11 +527,17 @@ export default function Call({
     const rec = new Rec();
     let stopped = false;
     rec.continuous = true;
-    rec.interimResults = false;
+    rec.interimResults = true;
     rec.lang = navigator.language || "en-US";
     rec.onresult = (e) => {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const text = e.results[i][0].transcript.trim();
+        // The transcript panel shows what the microphone is picking up while you are still talking.
+        window.dispatchEvent(
+          new CustomEvent("dispatch:captions", {
+            detail: { on: true, heard: text, final: e.results[i].isFinal },
+          }),
+        );
         if (e.results[i].isFinal && text && !live.current.muted) {
           setSaid({ id: Math.random(), name: "You", text });
           setTimeout(() => setSaid((c) => (c?.name === "You" && c.text === text ? null : c)), 3000 + text.length * 60);
@@ -551,6 +565,22 @@ export default function Call({
     return () => {
       stopped = true;
       rec.abort();
+    };
+  }, [listening]);
+  // The transcript panel in the conversation turns captions on and off, and hears what the mic hears.
+  useEffect(() => {
+    const flip = () => setListening((v) => !v);
+    window.addEventListener("dispatch:captions-toggle", flip);
+    return () => window.removeEventListener("dispatch:captions-toggle", flip);
+  }, []);
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("dispatch:captions", { detail: { on: listening } }),
+    );
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent("dispatch:captions", { detail: { on: false } }),
+      );
     };
   }, [listening]);
   const canListen =

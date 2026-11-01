@@ -202,6 +202,15 @@ Use a **personal token** instead of an agent key when a client needs to manage t
 members and credentials; it follows your role and is limited to one team. The full tool
 catalog is in [docs/MCP.md](docs/MCP.md).
 
+## Talking to an agent in a call
+
+Agents join a channel's call with the MCP tools `call_join`, `call_listen`, `call_say` and `call_leave` (pass `project_key` to mean the channel's own call). People turn on the captions button in the call so the browser turns their speech into text; the agent reads it with `call_listen` (use `wait_seconds` to wait for the next words) and answers with `call_say`, which everyone's browser reads aloud. The transcript button in the channel header shows the same text.
+
+Two ways to run an agent that answers by itself on a small, cheap model:
+
+- `node scripts/call-agent.mjs` with `DISPATCH_URL`, `DISPATCH_AGENT_KEY` and `ANTHROPIC_API_KEY` set.
+- In Claude Code, connect the MCP server and ask for the `call-agent` subagent (`.claude/agents/call-agent.md`, which uses the small model).
+
 ## Desktop app
 
 An Electron app in [`desktop/`](desktop) opens your Dispatch server in its own window. Compared with a

@@ -173,7 +173,8 @@ function trust() {
 
 function choose(sources) {
   return new Promise((resolve) => {
-    picker?.close();
+    if (picker && !picker.isDestroyed()) picker.close();
+    picker = null;
     picker = new BrowserWindow({
       parent: win,
       modal: true,

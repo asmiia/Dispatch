@@ -9,6 +9,8 @@ import {
   MessageSquare,
   Paperclip,
   Phone,
+  Captions,
+  Mic,
   Pin,
   Search,
   Trash2,
@@ -206,6 +208,9 @@ function Box({ placeholder, onSend, history, label, people = [] }) {
 
 // One message: avatar, name, tag and time above a bubble. In a channel, replies fold into a summary.
 function Row({ m, c, replies = [], onOpen }) {
+  // Older picture-only messages carry an "Attached ..." line; it adds nothing next to the picture.
+  if (m.attachments.length && /^Attached [^\n]+$/.test(m.body.trim()))
+    m = { ...m, body: "" };
   const mine = m.sender_name === c.me,
     sender = c.agentOf(m.sender_name),
     kind = sender?.program === "human" ? "person" : "agent",
@@ -381,8 +386,43 @@ export default function Feed({
     [threadW, setThreadW, resetThreadW] = useSize("thread", 340, 260, 560),
     [callH, setCallH, resetCallH] = useSize("callh", 300, 200, 760),
     [find, setFind] = useState(""),
-    [inCall, setInCall] = useState([]);
+    [inCall, setInCall] = useState([]),
+    [tx, setTx] = useState(false), // transcript panel
+    [txLines, setTxLines] = useState([]),
+    [capOn, setCapOn] = useState(false),
+    [heard, setHeard] = useState("");
 
+  useEffect(() => {
+    const on = (e) => {
+      setCapOn(!!e.detail.on);
+      if (!e.detail.on) setHeard("");
+      else if (e.detail.heard !== undefined)
+        setHeard(e.detail.final ? "" : e.detail.heard);
+    };
+    window.addEventListener("dispatch:captions", on);
+    return () => window.removeEventListener("dispatch:captions", on);
+  }, []);
+  useEffect(() => {
+    if (!tx || !firstMessageId || !api) return;
+    let live = true,
+      after = 0;
+    setTxLines([]);
+    const poll = () =>
+      api(`calls/transcript?message_id=${firstMessageId}&after=${after}`)
+        .then((r) => {
+          if (!live) return;
+          after = r.next_seq;
+          if (r.lines.length)
+            setTxLines((l) => [...l, ...r.lines].slice(-200));
+        })
+        .catch(() => {});
+    poll();
+    const t = setInterval(poll, 1500);
+    return () => {
+      live = false;
+      clearInterval(t);
+    };
+  }, [tx, firstMessageId, scope.key]);
   useEffect(() => {
     if (!searchTick) return;
     setSide(true);
@@ -512,6 +552,16 @@ export default function Feed({
                 )}
               </button>
             </Tooltip>
+            <Tooltip content={tx ? "Hide transcript" : "Call transcript"} side="bottom">
+              <button
+                className={"head-btn" + (tx ? " active" : "")}
+                aria-pressed={tx}
+                aria-label="Call transcript"
+                onClick={() => setTx(!tx)}
+              >
+                <Captions size={19} />
+              </button>
+            </Tooltip>
             <Tooltip content={side ? "Hide members" : "Show members"} side="bottom">
               <button
                 className={"head-btn count" + (side ? " active" : "")}
@@ -628,6 +678,51 @@ export default function Feed({
         )}
       </div>
 
+      {tx && (
+        <aside className="thread-panel transcript-panel" style={{ width: threadW }}>
+          <header>
+            <strong>Transcript</strong>
+            <span className="muted small">What is said in the call</span>
+            <button className="head-btn" aria-label="Close transcript" onClick={() => setTx(false)}>
+              <X size={17} />
+            </button>
+          </header>
+          <div className="tx-mic">
+            <button
+              className={"tx-toggle" + (capOn ? " on" : "")}
+              disabled={!callActive}
+              onClick={() => window.dispatchEvent(new CustomEvent("dispatch:captions-toggle"))}
+            >
+              <Mic size={14} />
+              {capOn ? "Sharing your voice" : "Share my voice"}
+            </button>
+            <span className="muted small">
+              {!callActive
+                ? "Join the call to share your voice."
+                : capOn
+                  ? "Your speech is turned into text for the call and its agents."
+                  : "Off. Nobody gets your words as text."}
+            </span>
+            {capOn && (
+              <div className="tx-heard">
+                <i /> {heard || "Listening…"}
+              </div>
+            )}
+          </div>
+          <div className="thread-scroll tx-lines">
+            {txLines.filter((l) => l.kind === "say").map((l) => (
+              <div key={l.seq} className={"tx-line" + (l.agent ? " agent" : "")}>
+                <strong>{l.name}</strong>
+                <time>{clock(l.at)}</time>
+                <p>{l.text}</p>
+              </div>
+            ))}
+            {!txLines.some((l) => l.kind === "say") && (
+              <p className="muted small tx-empty">Nothing has been said yet.</p>
+            )}
+          </div>
+        </aside>
+      )}
       {open && openList.length > 0 && (
         <>
           <Resizer size={threadW} grow={-1} onChange={setThreadW} onReset={resetThreadW} label="Resize the thread" />

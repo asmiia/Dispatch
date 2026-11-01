@@ -95,6 +95,16 @@ export async function GET(request, { params }) {
       const thread = db.thread(url.searchParams.get("message_id") || "");
       return Response.json(calls.status(thread[0].thread_id));
     }
+    if (path.join("/") === "calls/transcript") {
+      sec.human(actor);
+      const thread = db.thread(url.searchParams.get("message_id") || "");
+      return Response.json(
+        calls.transcript(
+          thread[0].thread_id,
+          Number(url.searchParams.get("after")) || 0,
+        ),
+      );
+    }
     if (path.join("/") === "calls/poll") {
       const user = sec.human(actor),
         peer = url.searchParams.get("peer") || "";
