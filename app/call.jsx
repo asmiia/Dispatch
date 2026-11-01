@@ -863,6 +863,7 @@ export default function Call({
   // Size the tiles so that all of them fit the room there is, as large as it allows.
   const gridRef = useRef(null),
     [tw, setTw] = useState(0),
+    [gridNode, setGridNode] = useState(null),
     count = all.length;
   useEffect(() => {
     const el = gridRef.current;
@@ -887,7 +888,7 @@ export default function Call({
       ro.disconnect();
       document.removeEventListener("fullscreenchange", size);
     };
-  }, [count, !!focusKey]);
+  }, [count, !!focusKey, gridNode]);
   useEffect(() => {
     const on = () => setFullNow(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", on);
@@ -973,7 +974,7 @@ export default function Call({
         </div>
       </div>
     ) : (
-      <div className="call-grid" ref={gridRef} style={{ "--tw": (tw || 320) + "px" }}>
+      <div className="call-grid" ref={(n) => ((gridRef.current = n), setGridNode(n))} style={{ "--tw": (tw || 320) + "px" }}>
         {all.map(pick)}
       </div>
     );

@@ -50,6 +50,7 @@ import Toasts from "./toasts";
 import Call from "./call";
 import Fluid from "./fluid";
 import Feed from "./feed";
+import { PluginsList, PluginsPage } from "./plugins";
 import Spaces, { NavRail, MeCard, QuickLinks } from "./spaces";
 import { TeamList, TeamPage } from "./team";
 import InboxPage, { InboxList, keep } from "./inbox";
@@ -1231,6 +1232,7 @@ export default function Workspace() {
           setView({ kind: "channel" });
         }}
         onPeople={() => setSection("people")}
+        onPlugins={() => setSection("plugins")}
         onProfile={() => openProfile("person", agent)}
         avatar={
           <AgentAvatar
@@ -1243,6 +1245,8 @@ export default function Workspace() {
       />
       {section === "inbox" ? (
         <InboxList items={inboxItems} tab={inboxTab} onTab={setInboxTab} />
+      ) : section === "plugins" ? (
+        <PluginsList />
       ) : section === "people" ? (
         <TeamList
           agents={agents}
@@ -1415,6 +1419,8 @@ export default function Workspace() {
                 ])
               }
             />
+          ) : section === "plugins" ? (
+            <PluginsPage teamName={teamName} />
           ) : section === "people" ? (
             <TeamPage
               agents={agents}

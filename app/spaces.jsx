@@ -9,13 +9,14 @@ import {
   Moon,
   MonitorDown,
   Plus,
+  Puzzle,
   Settings,
   Terminal,
   Users,
 } from "lucide-react";
 
 // The narrow icon column on the far left.
-export function NavRail({ logo, unread, view, section, onInbox, onChats, onPeople, avatar, onProfile }) {
+export function NavRail({ logo, unread, view, section, onInbox, onChats, onPeople, onPlugins, avatar, onProfile }) {
   const Btn = ({ icon: Icon, label, on, onClick, dot }) => (
     <button
       className={"rail-btn" + (on ? " on" : "")}
@@ -41,6 +42,7 @@ export function NavRail({ logo, unread, view, section, onInbox, onChats, onPeopl
       />
       <Btn icon={MessageSquare} label="Chats" on={section === "chats"} onClick={onChats} />
       <Btn icon={Users} label="People" on={section === "people"} onClick={onPeople} />
+      <Btn icon={Puzzle} label="Plugins" on={section === "plugins"} onClick={onPlugins} />
       <span className="rail-grow" />
     </nav>
   );

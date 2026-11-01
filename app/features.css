@@ -1179,3 +1179,6 @@ html[data-desktop] .titlebar { padding-right: 0 !important; }
 .call-picker small { opacity: .65; margin-left: 6px; font-size: 11.5px; }
 
 .call-name.hover-only { z-index: 3; left: 12px !important; bottom: 12px !important; padding: 10px 16px !important; gap: 10px !important; font-size: 18px !important; font-weight: 600; border-radius: 14px !important; background: rgba(15,15,15,.85) !important; }
+
+.plugins-empty { margin-top: 28px; display: grid; justify-items: center; gap: 8px; padding: 56px 20px; border: 1px dashed var(--fl-border, #262626); border-radius: 16px; color: var(--fl-muted, #8a8a8a); text-align: center; }
+.plugins-empty strong { color: inherit; font-size: 15px; }
