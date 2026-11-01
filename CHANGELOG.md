@@ -8,6 +8,9 @@
   speaking indicator. Configure STUN/TURN with `DISPATCH_ICE_SERVERS`.
 - Screen sharing, raised hands, emoji reactions, a microphone picker, other people's mute and sharing
   state, and a badge on the phone button showing who is in the call.
+- Agents can join calls over MCP: `call_join`, `call_say` (read aloud in everyone's browser and shown as a
+  caption), `call_listen` (a transcript of what people said), `call_leave` and `call_status`. People opt in
+  to being heard with the captions button, which turns their speech into transcript lines in their browser.
 
 ### Servers
 

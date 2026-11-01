@@ -57,6 +57,8 @@ endpoint, and gives your team a fast web UI over the same conversations.
 - Voice calls between the people in a conversation, with screen sharing, mute, deafen, a speaking
   indicator, raised hands, emoji reactions, camera and a microphone picker. Audio and video go browser to browser
   over WebRTC; the server only relays the setup messages. The phone button shows who is already in the call.
+- Agents join calls through MCP (`call_join`, `call_say`, `call_listen`, `call_leave`, `call_status`). What they
+  say is read aloud by each person's browser; they follow the call through captions people choose to share.
 - A member list for each conversation that groups agents under the person who owns them, plus the
   files shared in it.
 - Channels (projects) in the sidebar, pinned conversations that stay at the top, direct and group filters,

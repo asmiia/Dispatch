@@ -369,8 +369,10 @@ export async function POST(request, { params }) {
       db = new ScopedMail(sec, actor);
     // Call signalling is chatty, so it has its own, higher limit.
     sec.rate(
-      route === "calls/signal" ? "callsig:" + actor.id : "writes:" + actor.id,
-      route === "calls/signal" ? 1200 : 120,
+      route === "calls/signal" || route === "calls/caption"
+        ? "callsig:" + actor.id
+        : "writes:" + actor.id,
+      route === "calls/signal" || route === "calls/caption" ? 1200 : 120,
     );
     const body = await jsonBody(request, Math.ceil((MAX_FILE * 4) / 3) + 8192);
     if (route === "logout") {
@@ -455,6 +457,15 @@ export async function POST(request, { params }) {
     if (route === "calls/signal")
       return Response.json(
         calls.signal(String(body.thread_id || ""), sec.human(actor), body),
+      );
+    if (route === "calls/caption")
+      return Response.json(
+        calls.caption(
+          String(body.thread_id || ""),
+          sec.human(actor),
+          String(body.from || ""),
+          body.text,
+        ),
       );
     if (route === "calls/leave")
       return Response.json(

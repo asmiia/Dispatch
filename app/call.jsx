@@ -2,6 +2,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
+  Bot,
+  Captions,
   ChevronUp,
   Hand,
   Headphones,
@@ -81,6 +83,8 @@ export default function Call({
     [floating, setFloating] = useState([]),
     [mics, setMics] = useState([]),
     [error, setError] = useState(""),
+    [said, setSaid] = useState(null), // the agent line being read out, shown as a caption
+    [listening, setListening] = useState(false), // your speech goes to the transcript for agents
     live = useRef({}),
     room = useRef({ pcs: new Map(), audio: new Map() });
 
@@ -282,7 +286,18 @@ export default function Call({
       r.me = me;
       r.thread = thread;
       setPeers([...j.peers]);
-      for (const p of j.peers) connection(p.id);
+      for (const p of j.peers) if (!p.agent) connection(p.id);
+    }
+    // An agent spoke: read it aloud (unless you are deafened) and show it as a caption.
+    let clear;
+    function hear(e) {
+      setSaid({ id: e.id, from: e.from, name: e.name, text: e.text });
+      clearTimeout(clear);
+      clear = setTimeout(() => setSaid(null), 3000 + e.text.length * 60);
+      if (live.current.deaf || !("speechSynthesis" in window)) return;
+      const u = new SpeechSynthesisUtterance(e.text);
+      u.onend = () => setSaid((c) => (c?.id === e.id ? null : c));
+      window.speechSynthesis.speak(u);
     }
     async function loop() {
       if (stopped) return;
@@ -293,6 +308,7 @@ export default function Call({
         for (const e of got.events) {
           if (e.type === "signal") await handle(e.from, e.data).catch(() => {});
           if (e.type === "leave") drop(e.id);
+          if (e.type === "say") hear(e);
         }
         setPeers(got.peers);
         setStatus("Voice connected");
@@ -408,7 +424,11 @@ export default function Call({
             "cam",
             () =>
               navigator.mediaDevices.getUserMedia({
-                video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+                video: {
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 },
+                  frameRate: { ideal: 30 },
+                },
               }),
             setCam,
           );
@@ -452,7 +472,7 @@ export default function Call({
         r.thread = thread;
         watch("self", r.stream);
         setPeers([...j.peers]);
-        for (const p of j.peers) connection(p.id);
+        for (const p of j.peers) if (!p.agent) connection(p.id);
         loop();
         if (withVideo) r.toggleCam();
       } catch (e) {
@@ -476,6 +496,8 @@ export default function Call({
       clearInterval(tick);
       clearInterval(meter);
       window.removeEventListener("pagehide", bye);
+      clearTimeout(clear);
+      window.speechSynthesis?.cancel();
       bye();
       r.screen?.getTracks().forEach((t) => t.stop());
       r.cam?.getTracks().forEach((t) => t.stop());
@@ -484,6 +506,48 @@ export default function Call({
       ctx.close().catch(() => {});
     };
   }, [messageId]);
+
+  // Captions: this browser turns your speech into text for the transcript, so agents in the call can hear you.
+  useEffect(() => {
+    const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!listening || !Rec) return;
+    const rec = new Rec();
+    let stopped = false;
+    rec.continuous = true;
+    rec.interimResults = false;
+    rec.lang = navigator.language || "en-US";
+    rec.onresult = (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const text = e.results[i][0].transcript.trim();
+        if (e.results[i].isFinal && text && !live.current.muted)
+          api("calls/caption", {
+            thread_id: room.current.thread,
+            from: room.current.me,
+            text,
+          }).catch(() => {});
+      }
+    };
+    rec.onend = () => {
+      if (!stopped)
+        try {
+          rec.start();
+        } catch {}
+    };
+    rec.onerror = (e) => {
+      if (e.error === "not-allowed" || e.error === "service-not-allowed")
+        setListening(false);
+    };
+    try {
+      rec.start();
+    } catch {}
+    return () => {
+      stopped = true;
+      rec.abort();
+    };
+  }, [listening]);
+  const canListen =
+    typeof window !== "undefined" &&
+    !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
   const measure = (key) => (el) =>
     setSizes((p) =>
@@ -507,7 +571,11 @@ export default function Call({
           const mine = p.id === mineId,
             m = mine ? state : meta[p.id] || {},
             off = m.muted || m.deaf,
-            talking = mine ? !off && speaking.self : speaking[p.id],
+            talking = p.agent
+              ? said?.from === p.id
+              : mine
+                ? !off && speaking.self
+                : speaking[p.id],
             screen = streamOf(p, "screen"),
             camera = streamOf(p, "camera"),
             out = [];
@@ -542,7 +610,11 @@ export default function Call({
                 "--tint": `hsl(${hueFor(p.name)} 38% 20%)`,
               }}
             >
-              {camera ? (
+              {p.agent ? (
+                <span className="agent-face">
+                  <Bot size={44} />
+                </span>
+              ) : camera ? (
                 <Feed stream={camera} mirror={mine} />
               ) : (
                 <UserAvatar id={p.uid} name={p.name} v={p.avatar_v} size={96} />
@@ -551,6 +623,7 @@ export default function Call({
                 {m.hand && <Hand size={15} className="hand" />}
               </span>
               <span className="call-name">
+                {p.agent && <Bot size={13} />}
                 {m.deaf ? (
                   <HeadphoneOff size={13} />
                 ) : (
@@ -570,6 +643,11 @@ export default function Call({
           return out;
         })}
       </div>
+      {said && (
+        <div className="call-caption" role="status">
+          <b>{said.name}</b> {said.text}
+        </div>
+      )}
       {error && <div className="call-error">{error}</div>}
       <div className="call-dock">
         <span className="call-time">
@@ -643,6 +721,25 @@ export default function Call({
             >
               {sharing ? <MonitorOff size={20} /> : <MonitorUp size={20} />}
             </button>
+            {canListen && (
+              <button
+                className={"call-btn" + (listening ? " on" : "")}
+                aria-pressed={listening}
+                title={
+                  listening
+                    ? "Stop sharing captions with agents"
+                    : "Let agents hear you (captions)"
+                }
+                aria-label={
+                  listening
+                    ? "Stop sharing captions with agents"
+                    : "Let agents hear you (captions)"
+                }
+                onClick={() => setListening(!listening)}
+              >
+                <Captions size={20} />
+              </button>
+            )}
             <button
               className={"call-btn" + (hand ? " on" : "")}
               aria-pressed={hand}
@@ -696,15 +793,21 @@ export default function Call({
         </button>
       </div>
       <div className="mini-people">
-        {tiles.map((p) => (
-          <UserAvatar
-            key={p.id}
-            id={p.uid}
-            name={p.name}
-            v={p.avatar_v}
-            size={26}
-          />
-        ))}
+        {tiles.map((p) =>
+          p.agent ? (
+            <span key={p.id} className="agent-face mini" title={p.name}>
+              <Bot size={15} />
+            </span>
+          ) : (
+            <UserAvatar
+              key={p.id}
+              id={p.uid}
+              name={p.name}
+              v={p.avatar_v}
+              size={26}
+            />
+          ),
+        )}
       </div>
       <div className="mini-controls">
         <button
