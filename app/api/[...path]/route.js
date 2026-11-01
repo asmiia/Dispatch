@@ -253,13 +253,35 @@ export async function GET(request, { params }) {
       return Response.json(db.thread(path[1]));
     if (path[0] === "files" && path.length === 2) {
       const { file, bytes } = db.download(path[1]);
-      const ext = /\.(png|jpe?g|gif|webp|avif)$/i
+      const ext = /\.(png|jpe?g|gif|webp|avif|mp4|m4v|webm|mov|mp3|wav|ogg|m4a)$/i
           .exec(file.filename)?.[1]
           ?.toLowerCase(),
+        types = {
+          jpg: "image/jpeg", png: "image/png", jpeg: "image/jpeg", gif: "image/gif",
+          webp: "image/webp", avif: "image/avif", mp4: "video/mp4", m4v: "video/mp4",
+          webm: "video/webm", mov: "video/quicktime", mp3: "audio/mpeg", wav: "audio/wav",
+          ogg: "audio/ogg", m4a: "audio/mp4",
+        },
         inlineType =
-          url.searchParams.get("inline") === "1" && ext
-            ? "image/" + (ext === "jpg" ? "jpeg" : ext)
-            : null;
+          url.searchParams.get("inline") === "1" && ext ? types[ext] : null;
+      // Players ask for a slice of the file when you scrub.
+      const range = inlineType && /^bytes=(\d*)-(\d*)$/.exec(request.headers.get("range") || "");
+      if (range) {
+        const start = range[1] === "" ? Math.max(0, bytes.length - Number(range[2])) : Number(range[1]),
+          end = range[1] === "" || range[2] === "" ? bytes.length - 1 : Math.min(Number(range[2]), bytes.length - 1);
+        if (start <= end && start < bytes.length)
+          return new Response(bytes.subarray(start, end + 1), {
+            status: 206,
+            headers: {
+              "Content-Type": inlineType,
+              "Content-Range": `bytes ${start}-${end}/${bytes.length}`,
+              "Content-Length": String(end - start + 1),
+              "Accept-Ranges": "bytes",
+              "X-Content-Type-Options": "nosniff",
+              "Cache-Control": "private, no-store",
+            },
+          });
+      }
       return new Response(bytes, {
         headers: {
           ...(inlineType
@@ -271,6 +293,7 @@ export async function GET(request, { params }) {
             : { "Content-Type": "application/octet-stream" }),
           "Content-Disposition": `${inlineType ? "inline" : "attachment"}; filename="download"; filename*=UTF-8''${encodeURIComponent(file.filename).replace(/['()*]/g, (c) => "%" + c.charCodeAt(0).toString(16))}`,
           "Content-Length": String(bytes.length),
+          ...(inlineType ? { "Accept-Ranges": "bytes" } : {}),
           "X-Content-Type-Options": "nosniff",
           "Cache-Control": "private, no-store",
         },

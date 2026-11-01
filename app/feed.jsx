@@ -49,24 +49,49 @@ const plain = (md) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const isVideo = (name) => /\.(mp4|m4v|webm|mov)$/i.test(name);
+const isAudio = (name) => /\.(mp3|wav|ogg|m4a)$/i.test(name);
+
+// Pictures, video and audio play right in the message with a download button on them; other files are cards.
 function Attachments({ files }) {
   return (
     <div className="attachment-grid">
-      {files.map((f) =>
-        isImage(f.filename) ? (
+      {files.map((f) => {
+        const dl = (
           <a
-            className="image-card"
-            key={f.id}
+            className="dl-btn"
             href={f.download_url}
             download={f.filename}
-            title={`Download ${f.filename}`}
+            aria-label={"Download " + f.filename}
+            title={"Download " + f.filename}
           >
-            <img src={`${f.download_url}?inline=1`} alt={f.filename} loading="lazy" />
-            <span>
-              {f.filename} · {bytes(f.size)}
-            </span>
+            <Download size={15} />
           </a>
-        ) : (
+        );
+        if (isImage(f.filename))
+          return (
+            <div className="media-wrap" key={f.id}>
+              <a href={`${f.download_url}?inline=1`} target="_blank" rel="noreferrer">
+                <img src={`${f.download_url}?inline=1`} alt={f.filename} loading="lazy" />
+              </a>
+              {dl}
+            </div>
+          );
+        if (isVideo(f.filename))
+          return (
+            <div className="media-wrap" key={f.id}>
+              <video controls preload="metadata" src={`${f.download_url}?inline=1`} />
+              {dl}
+            </div>
+          );
+        if (isAudio(f.filename))
+          return (
+            <div className="media-wrap audio" key={f.id}>
+              <audio controls preload="metadata" src={`${f.download_url}?inline=1`} />
+              {dl}
+            </div>
+          );
+        return (
           <a className="file-card" key={f.id} href={f.download_url} download={f.filename}>
             <span className="file-icon">
               <FileText size={19} />
@@ -77,8 +102,8 @@ function Attachments({ files }) {
             </div>
             <Download size={16} />
           </a>
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }
@@ -294,9 +319,11 @@ function Row({ m, c, replies = [], onOpen }) {
             </>
           }
         >
-          <div className="prose-wrap">
-            <Markdown>{m.body}</Markdown>
-          </div>
+          {m.body.trim() ? (
+            <div className="prose-wrap">
+              <Markdown>{m.body}</Markdown>
+            </div>
+          ) : null}
           {onOpen && replies.length > 0 && (
             <div className="reply-sum">
               {replies.slice(-2).map((r) => (
@@ -502,9 +529,19 @@ export default function Feed({
         {inCall.length > 0 && !callActive && (
           <div className="call-preview" role="status">
             <div className="in-call">
-              {inCall.slice(0, 4).map((p) => (
-                <UserAvatar key={p.id} id={p.uid} name={p.name} v={p.avatar_v} size={38} />
-              ))}
+              {inCall.slice(0, 4).map((p) =>
+                p.agent ? (
+                  <AgentAvatar
+                    key={p.id}
+                    className="avatar"
+                    name={p.name}
+                    program={agentOf(p.name)?.program}
+                    model={agentOf(p.name)?.model}
+                  />
+                ) : (
+                  <UserAvatar key={p.id} id={p.uid} name={p.name} v={p.avatar_v} size={38} />
+                ),
+              )}
             </div>
             <div className="preview-text">
               <strong>

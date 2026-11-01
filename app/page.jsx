@@ -720,7 +720,7 @@ export default function Workspace() {
       subject: tid
         ? lastOf.get(tid).subject
         : line || files[0]?.name || "Message",
-      body_md: text || "Attached " + files.map((f) => f.name).join(", "),
+      body_md: text,
       thread_id: tid || undefined,
       attachment_paths: ids,
       project_key: project,

@@ -303,10 +303,11 @@ export default function Call({
     }
     // An agent spoke: read it aloud (unless you are deafened) and show it as a caption.
     let clear;
-    function hear(e) {
+    function hear(e, speak = true) {
       setSaid({ id: e.id, from: e.from, name: e.name, text: e.text });
       clearTimeout(clear);
       clear = setTimeout(() => setSaid(null), 3000 + e.text.length * 60);
+      if (!speak) return;
       if (live.current.deaf || !("speechSynthesis" in window)) return;
       const u = new SpeechSynthesisUtterance(e.text);
       u.onend = () => setSaid((c) => (c?.id === e.id ? null : c));
@@ -322,6 +323,7 @@ export default function Call({
           if (e.type === "signal") await handle(e.from, e.data).catch(() => {});
           if (e.type === "leave") drop(e.id);
           if (e.type === "say") hear(e);
+          if (e.type === "caption") hear(e, false);
         }
         setPeers(got.peers);
         setStatus("Voice connected");
@@ -522,12 +524,15 @@ export default function Call({
     rec.onresult = (e) => {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const text = e.results[i][0].transcript.trim();
-        if (e.results[i].isFinal && text && !live.current.muted)
+        if (e.results[i].isFinal && text && !live.current.muted) {
+          setSaid({ id: Math.random(), name: "You", text });
+          setTimeout(() => setSaid((c) => (c?.name === "You" && c.text === text ? null : c)), 3000 + text.length * 60);
           api("calls/caption", {
             thread_id: room.current.thread,
             from: room.current.me,
             text,
           }).catch(() => {});
+        }
       }
     };
     rec.onend = () => {
