@@ -619,6 +619,11 @@ export default function Workspace() {
   }, [liveCalls, user?.id]);
   useEffect(() => () => stopRing.current?.(), []);
   const callRef = useRef(null);
+  // Leaving a call that is still going on must not bring up a "call in progress" notice for it.
+  if (callRef.current && !call) {
+    dismissedCalls.current.add(callRef.current.threadId);
+    announced.current.add(callRef.current.threadId);
+  }
   callRef.current = call;
   // A call survives a reload (including the automatic one after an update): the tab remembers it and joins again.
   const restored = useRef(false);

@@ -24,6 +24,7 @@ import AgentAvatar, { photoOf } from "./agent-avatar";
 import UserAvatar from "./user-avatar";
 import Markdown from "./markdown";
 import MembersPanel from "./members-panel";
+import CallPreview from "./call-preview";
 import Resizer, { useSize } from "./resizer";
 import { ChatMessage } from "@/components/ui/chat-message";
 import { quickVoice, setQuickVoice } from "./tts";
@@ -588,44 +589,7 @@ export default function Feed({
         </header>
 
         {inCall.length > 0 && !callActive && (
-          <div className="call-preview" role="status">
-            <div className="in-call">
-              {inCall.slice(0, 4).map((p) =>
-                p.agent ? (
-                  <AgentAvatar
-                    key={p.id}
-                    className="avatar"
-                    name={p.name}
-                    program={agentOf(p.name)?.program}
-                    model={agentOf(p.name)?.model}
-                  />
-                ) : (
-                  <UserAvatar key={p.id} id={p.uid} name={p.name} v={p.avatar_v} size={38} />
-                ),
-              )}
-            </div>
-            <div className="preview-text">
-              <strong>
-                <span className="pulse" />
-                Call in progress
-              </strong>
-              <em>{inCall.map((p) => p.name).join(", ")}</em>
-            </div>
-            <div className="preview-actions">
-              <button
-                className="join-btn video"
-                aria-label="Join with video"
-                onClick={() => onStartCall(true)}
-              >
-                <Video size={18} />
-                Video
-              </button>
-              <button className="join-btn" aria-label="Join call" onClick={() => onStartCall(false)}>
-                <Phone size={18} />
-                Join
-              </button>
-            </div>
-          </div>
+          <CallPreview people={inCall} agentOf={agentOf} onJoin={onStartCall} />
         )}
         {callActive && <div id="call-slot" className="call-slot" />}
         {callActive && (

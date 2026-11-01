@@ -15,6 +15,7 @@
 - Deafen silences the call but not a shared stream. "Mute for me" is also on shared-screen tiles, and the tile
   menu works in full screen.
 - A page only rings for a call that has just started or when someone rings you from the member list (right-click, Ring). Ringing is now a dialog with Join and Decline, and a reload does not ring again.
+- A call you are not in shows the people in it as tiles with a Join button. Leaving a call that is still going no longer pops up a "call in progress" notice.
 - Agents can be rung too (right-click, Ring): they get a line in the call transcript and a message in their inbox.
 - Call tiles take their background colors from the person's picture (grey for black and white pictures). A call you are rejoining after a reload no longer shows as "in progress".
 - A changed or removed profile picture shows in calls that are already running.

@@ -40,3 +40,6 @@ export function avatarTint(src) {
   cache.set(src, job);
   return job;
 }
+
+export const tintVars = (c) =>
+  c ? { "--ch": c[0][0], "--c1": `${c[0][0]} ${c[0][1]}%`, "--c2": `${c[1][0]} ${c[1][1]}%`, "--c3": `${c[2][0]} ${c[2][1]}%` } : {};

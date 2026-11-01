@@ -1209,3 +1209,22 @@ html[data-desktop] .titlebar { padding-right: 0 !important; }
 .ring-decline { background: #c0433a; }
 .ring-join { background: #2b9a53; }
 .ring-actions button:hover { filter: brightness(1.1); }
+
+/* a call you are not in yet: the call's own tiles with a Join button */
+.call-preview.big { display: grid; gap: 14px; padding: 16px; margin: 12px 16px 0; border: 1px solid var(--fl-border, #262626); border-radius: 22px; background: var(--surface-2, #141414); }
+.call-preview.big .cp-head { display: flex; align-items: center; gap: 10px; }
+.call-preview.big .cp-head em { margin-left: auto; font-style: normal; font-size: 13px; color: color-mix(in srgb, currentColor 62%, transparent); }
+.cp-tiles { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.cp-tile { position: relative; width: 210px; height: 118px; display: grid; place-items: center; border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,.06);
+  background:
+    radial-gradient(120% 90% at 12% 8%, hsl(var(--c1, var(--h, 220) 70%) 40% / .75), transparent 62%),
+    radial-gradient(110% 95% at 92% 96%, hsl(var(--c2, calc(var(--h, 220) + 60) 65%) 34% / .75), transparent 62%),
+    radial-gradient(70% 60% at 78% 18%, hsl(var(--c3, calc(var(--h, 220) + 130) 55%) 32% / .45), transparent 70%),
+    hsl(var(--ch, var(--h, 220)) 30% 11%); }
+.cp-tile .u-avatar, .cp-tile .avatar { width: 64px !important; height: 64px !important; border-radius: 18px; }
+.cp-tile .call-name { color: #fff; }
+.cp-dock { display: flex; justify-content: center; gap: 10px; }
+.cp-tile { height: 132px; align-content: start; padding-top: 22px; box-sizing: border-box; }
+.cp-tile .u-avatar, .cp-tile .avatar { width: 56px !important; height: 56px !important; }
+.call-preview.big .join-btn.video { background: transparent !important; color: inherit !important; border: 1px solid var(--fl-border, #3a3a3a) !important; }
+.call-preview.big .join-btn.video:hover { background: var(--surface-4, rgba(128,128,128,.15)) !important; }

@@ -25,6 +25,7 @@ import {
 import AgentAvatar, { photoOf } from "./agent-avatar";
 import Markdown from "./markdown";
 import UserAvatar from "./user-avatar";
+import CallPreview from "./call-preview";
 import { hueFor } from "./gradient";
 import Resizer, { useSize } from "./resizer";
 import Fluid from "./fluid";
@@ -338,44 +339,7 @@ export default function Conversation({
           </div>
 
           {inCall.length > 0 && !calling && (
-            <div className="call-preview" role="status">
-              <div className="in-call">
-                {inCall.slice(0, 4).map((p) => (
-                  <UserAvatar
-                    key={p.id}
-                    id={p.uid}
-                    name={p.name}
-                    v={p.avatar_v}
-                    size={38}
-                  />
-                ))}
-              </div>
-              <div className="preview-text">
-                <strong>
-                  <span className="pulse" />
-                  Call in progress
-                </strong>
-                <em>{inCall.map((p) => p.name).join(", ")}</em>
-              </div>
-              <div className="preview-actions">
-                <button
-                  className="join-btn video"
-                  aria-label="Join with video"
-                  onClick={() => onStartCall(true)}
-                >
-                  <Video size={18} />
-                  Video
-                </button>
-                <button
-                  className="join-btn"
-                  aria-label="Join call"
-                  onClick={() => onStartCall(false)}
-                >
-                  <Phone size={18} />
-                  Join
-                </button>
-              </div>
-            </div>
+            <CallPreview people={inCall} agentOf={agentOf} onJoin={onStartCall} />
           )}
           {calling && <div id="call-slot" className="call-slot" />}
           {calling && (

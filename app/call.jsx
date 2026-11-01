@@ -31,11 +31,9 @@ import { listen } from "./stt";
 import { appAudioTrack } from "./app-audio";
 import { speak, warm, setOutput } from "./tts";
 import AgentAvatar from "./agent-avatar";
-import { avatarTint } from "./avatar-tint";
+import { avatarTint, tintVars } from "./avatar-tint";
 import { hueFor } from "./gradient";
 
-const tintVars = (c) =>
-  c ? { "--ch": c[0][0], "--c1": `${c[0][0]} ${c[0][1]}%`, "--c2": `${c[1][0]} ${c[1][1]}%`, "--c3": `${c[2][0]} ${c[2][1]}%` } : {};
 const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 // How a shared screen is captured and sent. Each viewer receives its own copy, so higher means more upload.
 const QUALITY = {
