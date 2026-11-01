@@ -1107,3 +1107,18 @@ html[data-desktop] .titlebar { padding-right: 0 !important; }
 /* the caption sits inside the call view, above its controls */
 .call { position: relative; }
 .call .call-caption { bottom: 92px; z-index: 5; pointer-events: none; }
+
+/* call layout: click a tile to focus it, the rest wait in a strip, a shared screen is focused by default */
+.call .call-focus-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.call .call-focus { flex: 1; min-height: 0; display: flex; }
+.call .call-focus > .call-tile { flex: 1; width: 100%; height: 100%; max-width: none !important; grid-column: auto; }
+.call .call-focus > .call-tile .feed { object-fit: contain; }
+.call .call-strip { display: flex; gap: 10px; height: 118px; flex: none; overflow-x: auto; padding-bottom: 2px; }
+.call .call-strip > .call-tile { flex: none; width: 200px; height: 100%; grid-column: auto; max-width: none; }
+.call .call-strip > .call-tile .avatar, .call .call-strip > .call-tile .u-avatar { width: 52px !important; height: 52px !important; }
+.call .call-strip > .call-tile .agent-face { width: 56px; height: 56px; }
+.call .call-strip .live-tag { transform: scale(.8); transform-origin: top right; }
+.call-tile.pickable, .call-tile.focused { cursor: pointer; }
+.call-tile.pickable:hover { outline-color: rgba(255,255,255,.35); }
+.call-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.call-grid > .call-tile.screen-tile { grid-column: 1 / -1; }

@@ -386,7 +386,7 @@ export default function Feed({
     [open, setOpen] = useState(null), // thread open in the side panel
     [sideW, setSideW, resetSideW] = useSize("side", 260, 200, 480),
     [threadW, setThreadW, resetThreadW] = useSize("thread", 340, 260, 560),
-    [callH, setCallH, resetCallH] = useSize("callh", 300, 200, 760),
+    [callH, setCallH, resetCallH] = useSize("callh", 440, 220, 800),
     [find, setFind] = useState(""),
     [inCall, setInCall] = useState([]),
     [tx, setTx] = useState(false), // transcript panel

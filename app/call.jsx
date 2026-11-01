@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { cloneElement, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Bot,
@@ -84,6 +84,7 @@ export default function Call({
     [meta, setMeta] = useState({}),
     [videos, setVideos] = useState({}), // stream id -> { peer, stream }
     [sizes, setSizes] = useState({}),
+    [focus, setFocus] = useState(null), // key of the focused tile, "none" for the grid, null for automatic
     [floating, setFloating] = useState([]),
     [mics, setMics] = useState([]),
     [error, setError] = useState(""),
@@ -593,10 +594,8 @@ export default function Call({
     },
     bounds = (key) =>
       sizes[key] ? `${sizes[key] >= 1000 ? sizes[key] : sizes[key]}P` : "";
-  const stage = (
-    <div className="call">
-      <div className="call-grid">
-        {tiles.flatMap((p) => {
+  // Every tile of the call, each with a key: a person, or a shared screen.
+  const all = tiles.flatMap((p) => {
           const mine = p.id === mineId,
             m = mine ? state : meta[p.id] || {},
             off = m.muted || m.deaf,
@@ -623,9 +622,10 @@ export default function Call({
                 <button
                   className="tile-full"
                   aria-label="Full screen"
-                  onClick={(e) =>
-                    e.currentTarget.parentElement.requestFullscreen?.()
-                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.currentTarget.parentElement.requestFullscreen?.();
+                  }}
                 >
                   <Maximize2 size={15} />
                 </button>
@@ -676,8 +676,36 @@ export default function Call({
             </div>,
           );
           return out;
-        })}
+        });
+  // Click a tile to focus it: it fills the stage and everyone else moves to a strip underneath. A shared screen
+  // is focused by default. Click the focused tile again to go back to the grid.
+  const screenTile = all.find((e) => String(e.key).endsWith("-screen")),
+    focusKey =
+      focus === "none"
+        ? null
+        : focus && all.some((e) => e.key === focus)
+          ? focus
+          : screenTile?.key || null;
+  const pick = (el) =>
+    cloneElement(el, {
+      onClick: () => setFocus(el.key === focusKey ? "none" : el.key),
+      title: el.key === focusKey ? "Click to show everyone" : "Click to focus",
+      className: el.props.className + (el.key === focusKey ? " focused" : " pickable"),
+    });
+  const layout =
+    focusKey && all.length > 1 ? (
+      <div className="call-focus-wrap">
+        <div className="call-focus">{pick(all.find((e) => e.key === focusKey))}</div>
+        <div className="call-strip">
+          {all.filter((e) => e.key !== focusKey).map(pick)}
+        </div>
       </div>
+    ) : (
+      <div className="call-grid">{all.map(pick)}</div>
+    );
+  const stage = (
+    <div className="call">
+      {layout}
       {said && (
         <div className="call-caption" role="status">
           <b>{said.name}</b> {said.text}
