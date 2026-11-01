@@ -119,7 +119,17 @@ function reloadForUpdate() {
     if (Date.now() - last < 20000) return false;
     sessionStorage.setItem("dispatch-reloaded", String(Date.now()));
   } catch {}
-  window.location.reload();
+  // Only reload once the server is answering again: reloading while it restarts shows an error page.
+  (async () => {
+    for (let i = 0; i < 60; i++) {
+      try {
+        const r = await fetch("/api/version", { cache: "no-store" });
+        if (r.ok && (r.headers.get("content-type") || "").includes("json")) break;
+      } catch {}
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    window.location.reload();
+  })();
   return true;
 }
 async function api(path, body) {
@@ -137,12 +147,11 @@ async function api(path, body) {
   try {
     value = await response.json();
   } catch {
+    // A 502 or 503 web page means the server is restarting for an update. Wait: the page reloads itself once the
+    // new version answers.
+    if (response.status >= 500) throw new Error("The server is restarting. Try again in a moment.");
     if (reloadForUpdate()) throw new Error("Updating Dispatch...");
-    throw new Error(
-      response.status >= 500
-        ? "The server is restarting. Try again in a moment."
-        : "Unexpected response from the server.",
-    );
+    throw new Error("Unexpected response from the server.");
   }
   if (!response.ok) {
     const error = new Error(value.error || "Request failed");
