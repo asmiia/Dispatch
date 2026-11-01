@@ -77,7 +77,7 @@ export function listen(stream, { onText, onStatus }) {
         if (voiced === 0)
           while (chunks.length > 3) total -= chunks.shift().length;
         // A phrase ends after a short pause, or when it has run long enough.
-        const ended = voiced > 0 && (quiet > 650 || total > rate * 14);
+        const ended = voiced > 0 && (quiet > 480 || total > rate * 14);
         if (ended) {
           const audio = new Float32Array(total);
           let at = 0;

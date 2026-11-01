@@ -12,8 +12,11 @@ const base = (process.env.DISPATCH_URL || "").replace(/\/$/, ""),
   key = process.env.DISPATCH_AGENT_KEY,
   model = process.env.CALL_MODEL || "claude-haiku-5-5",
   persona = process.env.CALL_PERSONA || "";
-if (!base || !key || !process.env.ANTHROPIC_API_KEY) {
-  console.error("Set DISPATCH_URL, DISPATCH_AGENT_KEY and ANTHROPIC_API_KEY.");
+// Answers come from the Anthropic API (ANTHROPIC_API_KEY), or from the Claude Code you are signed in to
+// (CALL_BACKEND=claude, which needs no API key and uses its small model).
+const viaCli = process.env.CALL_BACKEND === "claude";
+if (!base || !key || (!viaCli && !process.env.ANTHROPIC_API_KEY)) {
+  console.error("Set DISPATCH_URL, DISPATCH_AGENT_KEY and either ANTHROPIC_API_KEY or CALL_BACKEND=claude.");
   process.exit(1);
 }
 
@@ -80,6 +83,16 @@ async function think(lines) {
   for (const l of lines) history.push({ role: "user", content: `${l.name}: ${l.text}` });
   // The model needs alternating turns, so fold the history into one user message.
   const convo = history.slice(-16).map((m) => m.content).join("\n");
+  if (viaCli) {
+    const { spawnSync } = await import("node:child_process");
+    const run = spawnSync(
+      "claude",
+      ["-p", "--model", "haiku", "--no-session-persistence", "--system-prompt", system, convo],
+      { encoding: "utf8", cwd: (await import("node:os")).tmpdir(), shell: process.platform === "win32" },
+    );
+    if (run.status !== 0) throw new Error((run.stdout || run.stderr || "claude failed").trim().slice(0, 200));
+    return run.stdout.trim();
+  }
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
