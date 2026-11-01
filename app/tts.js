@@ -15,6 +15,12 @@ export const setQuickVoice = (on) => {
 };
 export const quickVoice = quick;
 
+let sinkId = "";
+export function setOutput(id) {
+  sinkId = id || "";
+  ctx?.setSinkId?.(sinkId).catch(() => {});
+}
+
 let worker = null,
   state = "idle", // idle | loading | ready | failed
   ctx = null,
@@ -81,7 +87,10 @@ function generate(text) {
   }).finally(() => waiting.delete(id));
 }
 async function play(got, onStart) {
-  ctx ||= new AudioContext();
+  if (!ctx) {
+    ctx = new AudioContext();
+    if (sinkId) ctx.setSinkId?.(sinkId).catch(() => {});
+  }
   if (ctx.state === "suspended") await ctx.resume().catch(() => {});
   const buffer = ctx.createBuffer(1, got.audio.length, got.rate);
   buffer.copyToChannel(got.audio, 0);

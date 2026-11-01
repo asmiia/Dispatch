@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import UserAvatar from "./user-avatar";
 import { listen } from "./stt";
-import { speak, warm } from "./tts";
+import { speak, warm, setOutput } from "./tts";
 import AgentAvatar from "./agent-avatar";
 import { hueFor } from "./gradient";
 
@@ -91,6 +91,14 @@ export default function Call({
     [focus, setFocus] = useState(null), // key of the focused tile, "none" for the grid, null for automatic
     [floating, setFloating] = useState([]),
     [mics, setMics] = useState([]),
+    [outs, setOuts] = useState([]), // speakers
+    [sink, setSink] = useState(() => {
+      try {
+        return localStorage.getItem("dispatch-sink") || "";
+      } catch {
+        return "";
+      }
+    }),
     [error, setError] = useState(""),
     [said, setSaid] = useState(null), // the agent line being read out, shown as a caption
     [listening, setListening] = useState(false), // your speech goes to the transcript for agents
@@ -99,6 +107,13 @@ export default function Call({
 
   // People you silenced for yourself (the others in the call still hear them).
   const [hushed, setHushed] = useState([]);
+  const stageRef = useRef(null),
+    sinkRef = useRef(sink);
+  sinkRef.current = sink;
+  useEffect(() => {
+    for (const el of room.current.audio.values()) el.setSinkId?.(sink).catch(() => {});
+    setOutput(sink);
+  }, [sink]);
   const mutedFor = (key) => room.current.local?.has(key.split(":")[0]);
   const state = {
     muted,
@@ -258,6 +273,7 @@ export default function Call({
         }
         el.srcObject = e.streams[0];
         el.muted = live.current.deaf || r.local.has(id);
+        if (sinkRef.current) el.setSinkId?.(sinkRef.current).catch(() => {});
         el.play().catch(() => {});
         watch(key, e.streams[0]);
       };
@@ -377,6 +393,35 @@ export default function Call({
           } catch {}
         }, wait);
     };
+    // Tell the person when their shared screen carries no sound, and why that happens.
+    const checkSound = (s) => {
+      const track = s.getAudioTracks()[0];
+      if (!track) {
+        setError("No sound was captured with your screen. In the share window, tick the box to also share audio.");
+        return setTimeout(() => setError(""), 12000);
+      }
+      try {
+        const c = new AudioContext(),
+          an = c.createAnalyser();
+        an.fftSize = 512;
+        c.createMediaStreamSource(new MediaStream([track])).connect(an);
+        const buf = new Uint8Array(256);
+        let loud = false,
+          n = 0;
+        const t = setInterval(() => {
+          an.getByteTimeDomainData(buf);
+          for (const v of buf) if (Math.abs(v - 128) > 3) loud = true;
+          if (loud || ++n > 24) {
+            clearInterval(t);
+            c.close().catch(() => {});
+            if (!loud && r.screen === s) {
+              setError("No sound is coming from your screen share. Windows only shares sound from the default output device: set it to the device you listen on, then share again.");
+              setTimeout(() => setError(""), 14000);
+            }
+          }
+        }, 250);
+      } catch {}
+    };
     // Camera and screen: add the video to every connection, and take it away again when you stop.
     const startVideo = async (kind, get, setter) => {
       try {
@@ -402,6 +447,7 @@ export default function Call({
         outStream(kind);
         for (const e of r.pcs.values()) attach(e, kind, s);
         setter(s);
+        if (kind === "screen") checkSound(s);
       } catch (err) {
         if (
           !["NotAllowedError", "AbortError", "NotFoundError"].includes(
@@ -486,7 +532,10 @@ export default function Call({
       if (stopped) return r.stream.getTracks().forEach((t) => t.stop());
       navigator.mediaDevices
         .enumerateDevices()
-        .then((d) => setMics(d.filter((x) => x.kind === "audioinput")))
+        .then((d) => {
+          setMics(d.filter((x) => x.kind === "audioinput"));
+          setOuts(d.filter((x) => x.kind === "audiooutput"));
+        })
         .catch(() => {});
       try {
         const j = await api("calls/join", { message_id: messageId });
@@ -631,7 +680,7 @@ export default function Call({
                   aria-label="Full screen"
                   onClick={(e) => {
                     e.stopPropagation();
-                    e.currentTarget.parentElement.requestFullscreen?.();
+                    toggleFull();
                   }}
                 >
                   <Maximize2 size={15} />
@@ -686,13 +735,39 @@ export default function Call({
         });
   // Click a tile to focus it: it fills the stage and everyone else moves to a strip underneath. A shared screen
   // is focused by default. Click the focused tile again to go back to the grid.
-  const screenTile = all.find((e) => String(e.key).endsWith("-screen")),
-    focusKey =
-      focus === "none"
-        ? null
-        : focus && all.some((e) => e.key === focus)
-          ? focus
-          : screenTile?.key || null;
+  const focusKey = focus && focus !== "none" && all.some((e) => e.key === focus) ? focus : null;
+  // Size the tiles so that all of them fit the room there is, as large as it allows.
+  const gridRef = useRef(null),
+    [tw, setTw] = useState(0),
+    count = all.length;
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    const size = () => {
+      const W = el.clientWidth - 8,
+        H = el.clientHeight - 8,
+        gap = 12,
+        cap = document.fullscreenElement ? 1100 : 560;
+      let best = 0;
+      for (let c = 1; c <= Math.max(count, 1); c++) {
+        const rows = Math.ceil(count / c);
+        best = Math.max(best, Math.min((W - gap * (c - 1)) / c, ((H - gap * (rows - 1)) / rows) * (16 / 9)));
+      }
+      setTw(Math.max(140, Math.min(cap, Math.floor(best))));
+    };
+    size();
+    const ro = new ResizeObserver(size);
+    ro.observe(el);
+    document.addEventListener("fullscreenchange", size);
+    return () => {
+      ro.disconnect();
+      document.removeEventListener("fullscreenchange", size);
+    };
+  }, [count, !!focusKey]);
+  const toggleFull = () =>
+    document.fullscreenElement
+      ? document.exitFullscreen()
+      : stageRef.current?.requestFullscreen?.();
   const personOf = (el) => tiles.find((p) => String(el.key).startsWith(p.id));
   const tileMenu = (el) => (e) => {
     const p = personOf(el),
@@ -715,8 +790,23 @@ export default function Call({
       {
         label: "Full screen",
         icon: <Maximize2 size={14} />,
-        onClick: () => document.querySelector(`[data-tile="${el.key}"]`)?.requestFullscreen?.(),
+        onClick: () => toggleFull(),
       },
+      ...(screenTile && !mine && p
+        ? [
+            "-",
+            ...[["Stream sound: full", 1], ["Stream sound: half", 0.4], ["Stream sound: off", 0]].map(([label, v]) => ({
+              label,
+              icon: <Headphones size={14} />,
+              onClick: () => {
+                const id = meta[p.id]?.screen;
+                for (const [key, el] of room.current.audio)
+                  if (key === p.id + ":" + id) el.volume = v;
+              },
+            })),
+            "-",
+          ]
+        : []),
       ...(screenTile && mine
         ? [{ label: "Stop sharing", icon: <MonitorOff size={14} />, onClick: () => room.current.toggleShare() }]
         : []),
@@ -773,10 +863,12 @@ export default function Call({
         )}
       </div>
     ) : (
-      <div className="call-grid">{all.map(pick)}</div>
+      <div className="call-grid" ref={gridRef} style={{ "--tw": (tw || 320) + "px" }}>
+        {all.map(pick)}
+      </div>
     );
   const stage = (
-    <div className="call">
+    <div className="call" ref={stageRef}>
       {layout}
       {said && (
         <div className="call-caption" role="status">
@@ -817,6 +909,37 @@ export default function Call({
                         }}
                       >
                         {d.label || `Microphone ${i + 1}`}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {outs.length > 1 && (
+              <div className="call-react">
+                <button
+                  className="call-caret"
+                  title="Choose where you hear the call"
+                  aria-label="Choose where you hear the call"
+                  onClick={() => setMenu(menu === "out" ? "" : "out")}
+                >
+                  <ChevronUp size={14} />
+                </button>
+                {menu === "out" && (
+                  <div className="call-picker list">
+                    {outs.map((d, i) => (
+                      <button
+                        key={d.deviceId}
+                        onClick={() => {
+                          setSink(d.deviceId);
+                          try {
+                            localStorage.setItem("dispatch-sink", d.deviceId);
+                          } catch {}
+                          setMenu("");
+                        }}
+                      >
+                        {(sink || "default") === d.deviceId ? "✓ " : ""}
+                        {d.label || `Speakers ${i + 1}`}
                       </button>
                     ))}
                   </div>

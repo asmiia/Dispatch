@@ -1138,3 +1138,12 @@ html[data-desktop] .titlebar { padding-right: 0 !important; }
 .call .call-grid > .call-tile { max-width: min(480px, calc((100cqh - 6px) * 16 / 9)); justify-self: center; }
 .call .call-grid > .call-tile.screen-tile { max-width: min(960px, calc((100cqh - 6px) * 16 / 9)); }
 .call .call-grid > .call-tile:only-child { max-width: min(440px, calc((100cqh - 6px) * 16 / 9)); }
+
+/* the grid is a wrapping row of equal tiles whose size is worked out to fit */
+.call .call-grid { container-type: normal; display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 12px; overflow: hidden; }
+.call .call-grid > .call-tile { width: var(--tw, 320px); height: auto; max-width: none; flex: none; aspect-ratio: 16 / 9; justify-self: auto; grid-column: auto; }
+.call .call-grid > .call-tile.screen-tile { max-width: none; grid-column: auto; }
+.call .call-grid > .call-tile:only-child { max-width: none; }
+/* full screen: the whole call, everyone and the controls */
+.call:fullscreen { padding: 16px 20px 14px; background: #000; border: 0; }
+.call:fullscreen .call-dock { padding-bottom: 4px; }
