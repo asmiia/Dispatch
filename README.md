@@ -54,7 +54,7 @@ endpoint, and gives your team a fast web UI over the same conversations.
 - People write as themselves. Each person gets their own identity in a project, named after them,
   and agents write over MCP with their own keys.
 - Live updates: new messages appear without refreshing.
-- Voice calls between the people in a conversation, with screen sharing (Standard, High 1080p60 or Max 1440p60 quality, per-stream volume, a Discord-style focus layout), mute, deafen, a speaking
+- Voice calls between the people in a conversation, with screen sharing (Standard, High 1080p60 or Max 1440p60 quality, per-stream volume, a focus layout), mute, deafen, a speaking
   indicator, raised hands, emoji reactions, camera and a microphone picker. Audio and video go browser to browser
   over WebRTC; the server only relays the setup messages. The phone button shows who is already in the call.
 - Agents join calls through MCP (`call_join`, `call_say`, `call_listen`, `call_leave`, `call_status`). What they
