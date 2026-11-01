@@ -15,7 +15,7 @@ export default {
     return [
       {
         source:
-          "/:path((?!api/|mcp|health|_next/|favicon[.]ico|icon|apple-icon|ring[.]wav).+)",
+          "/:path((?!api/|mcp|health|_next/|favicon[.]ico|icon|apple-icon|ring[.]wav|ort/).+)",
         destination: "/",
         permanent: false,
       },
@@ -33,7 +33,7 @@ export default {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+              "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://huggingface.co https://*.huggingface.co https://*.hf.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
           },
         ],
       },

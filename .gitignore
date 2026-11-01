@@ -10,3 +10,4 @@ artifacts/
 # Desktop app
 desktop/node_modules/
 desktop/dist/
+public/ort/

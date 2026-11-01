@@ -391,11 +391,13 @@ export default function Feed({
     [txLines, setTxLines] = useState([]),
     [capOn, setCapOn] = useState(false),
     [heard, setHeard] = useState(""),
-    [capErr, setCapErr] = useState("");
+    [capErr, setCapErr] = useState(""),
+    [capStatus, setCapStatus] = useState("");
 
   useEffect(() => {
     const on = (e) => {
       setCapOn(!!e.detail.on);
+      if (e.detail.status !== undefined) setCapStatus(e.detail.status);
       if (e.detail.error) setCapErr(e.detail.error);
       else if (e.detail.heard !== undefined || !e.detail.on) setCapErr("");
       if (!e.detail.on) setHeard("");
@@ -708,7 +710,7 @@ export default function Feed({
             </span>
             {capOn && (
               <div className="tx-heard">
-                <i /> {heard || "Listening…"}
+                <i /> {capStatus || heard || "Listening…"}
               </div>
             )}
             {capOn && capErr && <div className="tx-error">{capErr}</div>}
