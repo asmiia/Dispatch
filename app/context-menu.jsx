@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 // Right-click menu at the cursor. items: [{ label, icon, onClick, danger, disabled } | "-"]
 export default function ContextMenu({ menu, onClose }) {
@@ -27,7 +28,8 @@ export default function ContextMenu({ menu, onClose }) {
       window.removeEventListener("scroll", close, true);
     };
   }, [onClose]);
-  return (
+  // In full screen only the full-screen element is visible, so the menu has to live inside it.
+  return createPortal(
     <div
       className="ctx-backdrop"
       onMouseDown={onClose}
@@ -63,6 +65,7 @@ export default function ContextMenu({ menu, onClose }) {
           ),
         )}
       </div>
-    </div>
+    </div>,
+    document.fullscreenElement || document.body,
   );
 }

@@ -1115,8 +1115,8 @@ html[data-desktop] .titlebar { padding-right: 0 !important; }
 .call .call-focus > .call-tile .feed { object-fit: contain; }
 .call .call-strip { display: flex; gap: 10px; height: 118px; flex: none; overflow-x: auto; padding-bottom: 2px; }
 .call .call-strip > .call-tile { flex: none; width: 200px; height: 100%; grid-column: auto; max-width: none; }
-.call .call-strip > .call-tile .avatar, .call .call-strip > .call-tile .u-avatar { width: 52px !important; height: 52px !important; }
-.call .call-strip > .call-tile .agent-face { width: 56px; height: 56px; }
+.call .call-strip > .call-tile .avatar, .call .call-strip > .call-tile .u-avatar { width: 72px !important; height: 72px !important; }
+.call .call-strip > .call-tile .agent-face { width: 76px; height: 76px; }
 .call .call-strip .live-tag { transform: scale(.8); transform-origin: top right; }
 .call-tile.pickable, .call-tile.focused { cursor: pointer; }
 .call-tile.pickable:hover { outline-color: rgba(255,255,255,.35); }

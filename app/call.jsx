@@ -98,6 +98,7 @@ export default function Call({
     [menu, setMenu] = useState(""), // "react" | "mic" | "out" | "src" | ""
     [speaking, setSpeaking] = useState({}),
     [meta, setMeta] = useState({}),
+    metaRef = useRef({}),
     [videos, setVideos] = useState({}), // stream id -> { peer, stream }
     [sizes, setSizes] = useState({}),
     [chatHidden, setChatHidden] = useState(false),
@@ -154,6 +155,12 @@ export default function Call({
     for (const el of room.current.audio.values()) el.setSinkId?.(sink).catch(() => {});
     setOutput(sink);
   }, [sink]);
+  metaRef.current = meta;
+  // Deafening silences the call, not a stream someone is sharing.
+  const silenced = (key) => {
+    const [id, sid] = key.split(":");
+    return (live.current.deaf && sid !== metaRef.current[id]?.screen) || mutedFor(key);
+  };
   const mutedFor = (key) => room.current.local?.has(key.split(":")[0]);
   const state = {
     muted,
@@ -171,9 +178,9 @@ export default function Call({
   useEffect(() => {
     live.current = state;
     room.current.stream?.getAudioTracks().forEach((t) => (t.enabled = !muted));
-    for (const [key, el] of room.current.audio) el.muted = deaf || mutedFor(key);
+    for (const [key, el] of room.current.audio) el.muted = silenced(key);
     broadcast({ t: "state", s: state });
-  }, [muted, deaf, hand, sharing, cam, hushed]);
+  }, [muted, deaf, hand, sharing, cam, hushed, meta]);
 
   const pop = (peer, emoji) => {
     const id = Math.random().toString(36).slice(2);
@@ -322,7 +329,7 @@ export default function Call({
           r.audio.set(key, el);
         }
         el.srcObject = e.streams[0];
-        el.muted = live.current.deaf || r.local.has(id);
+        el.muted = silenced(key);
         if (sinkRef.current) el.setSinkId?.(sinkRef.current).catch(() => {});
         el.play().catch(() => {});
         watch(key, e.streams[0]);
@@ -924,7 +931,7 @@ export default function Call({
       ...(screenTile && mine
         ? [{ label: "Stop sharing", icon: <MonitorOff size={14} />, onClick: () => room.current.toggleShare() }]
         : []),
-      ...(p && !mine && !p.agent && !screenTile
+      ...(p && !mine && !p.agent
         ? [
             "-",
             {
