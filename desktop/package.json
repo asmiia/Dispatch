@@ -1,7 +1,7 @@
 {
   "name": "dispatch-desktop",
   "productName": "Dispatch",
-  "version": "0.4.5-alpha",
+  "version": "0.4.6-alpha",
   "description": "Desktop app for a Dispatch server",
   "private": true,
   "main": "main.js",
