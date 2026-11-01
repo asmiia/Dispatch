@@ -519,7 +519,13 @@ export default function Workspace() {
     ringTimer = useRef(null),
     [ringModal, setRingModal] = useState(null);
   useEffect(() => {
-    const mineIn = (c) => c.people.some((p) => p.uid === user?.id),
+    // After a reload the call is rejoined in a moment, so it is not one that is waiting for you.
+    let savedThread = "";
+    try {
+      const s = JSON.parse(sessionStorage.getItem("dispatch-call") || "null");
+      if (s && Date.now() - s.at < 600000) savedThread = s.threadId;
+    } catch {}
+    const mineIn = (c) => c.people.some((p) => p.uid === user?.id) || c.thread_id === savedThread || c.thread_id === callRef.current?.threadId,
       incoming = liveCalls.filter(
         (c) =>
           !mineIn(c) &&
@@ -1530,6 +1536,7 @@ export default function Workspace() {
                 })
               }
               onLeaveCall={() => setCall(null)}
+              onRing={(t) => api("calls/ring", { ...t, project_key: project, sender_name: agent }).catch(() => {})}
               api={api}
               firstMessageId={scopeFirst?.id}
               disabledReason={

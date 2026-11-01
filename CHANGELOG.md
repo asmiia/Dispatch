@@ -15,7 +15,8 @@
 - Deafen silences the call but not a shared stream. "Mute for me" is also on shared-screen tiles, and the tile
   menu works in full screen.
 - A page only rings for a call that has just started or when someone rings you from the member list (right-click, Ring). Ringing is now a dialog with Join and Decline, and a reload does not ring again.
-- Call tiles take their background colors from the person's picture.
+- Agents can be rung too (right-click, Ring): they get a line in the call transcript and a message in their inbox.
+- Call tiles take their background colors from the person's picture (grey for black and white pictures). A call you are rejoining after a reload no longer shows as "in progress".
 - A changed or removed profile picture shows in calls that are already running.
 - Calls rejoin after a page reload. Tiles resize correctly after changing page.
 - Agents can write in the channel as well as speak, and may speak up on their own when people allow it.

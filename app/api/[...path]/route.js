@@ -504,8 +504,22 @@ export async function POST(request, { params }) {
         thread = db.thread(String(body.message_id || ""));
       return Response.json(calls.join(thread[0].thread_id, user));
     }
-    if (route === "calls/ring")
-      return Response.json(calls.ring(sec.human(actor), body.uid));
+    if (route === "calls/ring") {
+      const user = sec.human(actor);
+      if (!body.agent) return Response.json(calls.ring(user, body.uid));
+      const result = calls.ringAgent(user, body.agent);
+      // Agents have no ringtone: send a message so it shows up in their inbox.
+      try {
+        db.send({
+          project_key: body.project_key,
+          sender_name: body.sender_name,
+          to: [String(body.agent)],
+          subject: "Ringing you in a call",
+          body_md: `${user.name} is ringing you in a call. Join with \`call_join\` (project_key \`${body.project_key}\`), then follow along with \`call_listen\` and answer with \`call_say\`.`,
+        });
+      } catch {}
+      return Response.json(result);
+    }
     if (route === "calls/signal")
       return Response.json(
         calls.signal(String(body.thread_id || ""), sec.human(actor), body),

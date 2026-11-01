@@ -27,9 +27,9 @@ export function avatarTint(src) {
         }
         const top = buckets.filter((b) => b.w > 0).sort((a, b) => b.w - a.w).slice(0, 3)
           .map((b) => hsl(b.r / b.w, b.g / b.w, b.b / b.w));
-        if (!top.length) return resolve(null);
+        if (!top.length) return resolve([[0, 0], [0, 0], [0, 0]]);
         while (top.length < 3) top.push([(top[0][0] + 40 * top.length) % 360, top[0][1], top[0][2]]);
-        resolve(top.map(([h, s]) => [Math.round(h), Math.round(Math.min(0.7, Math.max(0.35, s)) * 100)]));
+        resolve(top.map(([h, s]) => [Math.round(h), Math.round(Math.min(0.7, Math.max(0.3, s)) * 100)]));
       } catch {
         resolve(null);
       }

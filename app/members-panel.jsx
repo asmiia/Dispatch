@@ -70,7 +70,7 @@ export default function MembersPanel({
               onContextMenu={(e) =>
                 onMenu(e, [
                   ...(onRing && person && person.name !== me
-                    ? [{ label: "Ring", icon: <Phone size={14} />, onClick: () => onRing(person.a.owner_id) }]
+                    ? [{ label: "Ring", icon: <Phone size={14} />, onClick: () => onRing({ uid: person.a.owner_id }) }]
                     : []),
                   {
                     label: "View profile",
@@ -119,6 +119,9 @@ export default function MembersPanel({
                     onClick={() => onProfile("agent", name)}
                     onContextMenu={(e) =>
                       onMenu(e, [
+                        ...(onRing
+                          ? [{ label: "Ring", icon: <Phone size={14} />, onClick: () => onRing({ agent: name }) }]
+                          : []),
                         {
                           label: "View profile",
                           icon: <UserRound size={14} />,
