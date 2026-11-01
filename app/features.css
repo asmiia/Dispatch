@@ -1232,3 +1232,18 @@ html[data-desktop] .titlebar { padding-right: 0 !important; }
 /* a tile with a picture glows with that picture itself: a blurred, darkened copy behind it */
 .call-tile.has-pic, .cp-tile.has-pic { isolation: isolate; }
 .call-tile.has-pic::before, .cp-tile.has-pic::before { content: ""; position: absolute; inset: -30%; z-index: -1; background: var(--pic) center / cover; filter: blur(46px) saturate(1.5) brightness(.6); transform: scale(1.2); }
+
+/* the preview of a call you are not in looks like the call: dark stage, big tiles, a dock with Join */
+.call-preview.big { background: #060606 !important; border: 0 !important; border-radius: 20px; padding: 18px 18px 22px; margin: 12px 16px 0; color: #fff; gap: 18px; }
+.call-preview.big .cp-head strong { color: #fff; }
+.call-preview.big .cp-head em { color: rgba(255,255,255,.55); }
+.cp-tiles { padding: 10px 0 4px; }
+.cp-tile { width: 270px; height: 152px; padding-top: 0 !important; align-content: center !important; border-radius: 18px; }
+.cp-tile .u-avatar, .cp-tile .avatar { width: 80px !important; height: 80px !important; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+.cp-tile .agent-face { width: 84px; height: 84px; }
+.cp-tile .call-name { position: absolute; left: 10px; bottom: 10px; background: rgba(0,0,0,.6); border-radius: 9px; padding: 5px 10px; font-weight: 600; }
+.cp-dock { justify-self: center; padding: 8px; border: 1px solid rgba(255,255,255,.1); border-radius: 20px; background: rgba(255,255,255,.04); }
+.cp-dock .join-btn { height: 44px; border-radius: 14px; padding: 0 20px; }
+.call-preview.big .join-btn.video { color: #fff !important; border: 0 !important; background: rgba(255,255,255,.08) !important; }
+.call-preview.big .join-btn.video:hover { background: rgba(255,255,255,.16) !important; }
+.call-tile.has-pic::before, .cp-tile.has-pic::before { filter: blur(46px) saturate(1.4) brightness(.42) !important; }
