@@ -153,13 +153,17 @@ function trust() {
       const choice = await choose(sources);
       if (!choice) return callback({});
       const source = sources.find((s) => s.id === choice.id);
-      lastShare = choice.quality;
+      // Sharing one window: take the sound of that program only, as Discord does (Windows). Sharing a whole
+      // screen: everything the default output plays.
+      const only = process.platform === "win32" && choice.audio && source?.id.startsWith("window:");
+      lastShare = { ...choice.quality, appAudio: !!only };
+      if (only) startAppAudio(Number(source.id.split(":")[1]));
       callback(
         source
           ? {
               video: source,
               audio:
-                choice.audio && process.platform === "win32"
+                choice.audio && !only && process.platform === "win32"
                   ? "loopback"
                   : undefined,
             }
@@ -170,6 +174,37 @@ function trust() {
     }
   });
 }
+
+// One program's sound, from desktop/app-audio.ps1 (Windows process loopback). It reads from the audio engine and
+// never touches the program itself, so it is safe next to games and their anti-cheat.
+let appAudio = null;
+function stopAppAudio() {
+  try {
+    appAudio?.kill();
+  } catch {}
+  appAudio = null;
+}
+function startAppAudio(hwnd) {
+  stopAppAudio();
+  const file = path.join(__dirname, "app-audio.ps1").replace("app.asar", "app.asar.unpacked");
+  const child = require("node:child_process").spawn(
+    "powershell.exe",
+    ["-MTA", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", file, "-Hwnd", String(hwnd)],
+    { windowsHide: true },
+  );
+  appAudio = child;
+  child.stdout.on("data", (chunk) => win?.webContents.send("app-audio", chunk));
+  let err = "";
+  child.stderr.on("data", (d) => (err += d.toString()));
+  child.on("exit", () => {
+    if (appAudio === child) {
+      appAudio = null;
+      if (err.trim()) win?.webContents.send("app-audio-error", err.trim().slice(0, 200));
+    }
+  });
+}
+ipcMain.on("app-audio-stop", stopAppAudio);
+app.on("before-quit", stopAppAudio);
 
 function choose(sources) {
   return new Promise((resolve) => {

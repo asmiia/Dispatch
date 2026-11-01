@@ -28,11 +28,18 @@ import {
 } from "lucide-react";
 import UserAvatar from "./user-avatar";
 import { listen } from "./stt";
+import { appAudioTrack } from "./app-audio";
 import { speak, warm, setOutput } from "./tts";
 import AgentAvatar from "./agent-avatar";
 import { hueFor } from "./gradient";
 
 const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+// How a shared screen is captured and sent. Each viewer receives its own copy, so higher means more upload.
+const QUALITY = {
+  standard: { label: "Standard", note: "720p · 30 fps · 3 Mbps", h: 720, fps: 30, bps: 3e6 },
+  high: { label: "High", note: "1080p · 60 fps · 8 Mbps", h: 1080, fps: 60, bps: 8e6 },
+  max: { label: "Max", note: "1440p · 60 fps · 16 Mbps, sharpest, heaviest on your PC", h: 1440, fps: 60, bps: 16e6 },
+};
 const REACTIONS = ["👍", "❤️", "😂", "🎉", "👏", "🔥"];
 
 // A video in a tile (camera or shared screen). The element is fed by the stream.
@@ -94,7 +101,14 @@ export default function Call({
     [videos, setVideos] = useState({}), // stream id -> { peer, stream }
     [sizes, setSizes] = useState({}),
     [chatHidden, setChatHidden] = useState(false),
-    [streamOff, setStreamOff] = useState([]), // people whose shared screen you silenced
+    [streamVol, setStreamVol] = useState({}), // volume you set for someone's shared screen, 0 to 1
+    [shareQ, setShareQ] = useState(() => {
+      try {
+        return localStorage.getItem("dispatch-share-q") || "high";
+      } catch {
+        return "high";
+      }
+    }),
     [fullNow, setFullNow] = useState(false),
     [shareSrc, setShareSrc] = useState(() => {
       try {
@@ -124,8 +138,17 @@ export default function Call({
   const [hushed, setHushed] = useState([]);
   const stageRef = useRef(null),
     srcRef = useRef(shareSrc),
+    qRef = useRef(shareQ),
     sinkRef = useRef(sink);
   srcRef.current = shareSrc;
+  qRef.current = QUALITY[shareQ] ? shareQ : "high";
+  // Apply the volume you set to the matching shared-screen sound.
+  useEffect(() => {
+    for (const [peer, v] of Object.entries(streamVol)) {
+      const id = meta[peer]?.screen;
+      for (const [key, el] of room.current.audio) if (key === peer + ":" + id) el.volume = v;
+    }
+  }, [streamVol, meta]);
   sinkRef.current = sink;
   useEffect(() => {
     for (const el of room.current.audio.values()) el.setSinkId?.(sink).catch(() => {});
@@ -215,16 +238,26 @@ export default function Call({
       let s = e.senders[key];
       if (!s && !track) return null;
       if (!s)
-        s = e.senders[key] = e.pc.addTransceiver(
-          key.endsWith("Audio") ? "audio" : "video",
-          { direction: "sendrecv", streams: [outStream(kind)] },
-        ).sender;
+        s = e.senders[key] = (() => {
+          const t = e.pc.addTransceiver(key.endsWith("Audio") ? "audio" : "video", {
+            direction: "sendrecv",
+            streams: [outStream(kind)],
+          });
+          // A shared screen goes out as H.264 (hardware encoded, light on a game), or VP9 for the sharpest picture.
+          if (key === "screen")
+            try {
+              const first = qRef.current === "max" ? /VP9/i : /H264/i,
+                rank = (c) => (first.test(c.mimeType) ? 0 : /VP9|H264/i.test(c.mimeType) ? 1 : 2);
+              t.setCodecPreferences([...RTCRtpSender.getCapabilities("video").codecs].sort((a, b) => rank(a) - rank(b)));
+            } catch {}
+          return t.sender;
+        })();
       s.replaceTrack(track || null).catch(() => {});
       return s;
     };
     const attach = (e, kind, capture) => {
       const video = lane(e, kind, capture.getVideoTracks()[0], kind);
-      if (video) tune(video, kind === "screen" ? 5e6 : 2.5e6);
+      if (video) tune(video, kind === "screen" ? QUALITY[qRef.current].bps : 2.5e6);
       // System audio from a shared screen travels with it.
       lane(e, kind + "Audio", capture.getAudioTracks()[0], kind);
     };
@@ -485,6 +518,10 @@ export default function Call({
         for (const key of [kind, kind + "Audio"])
           e.senders[key]?.replaceTrack(null).catch(() => {});
       r[kind] = null;
+      if (kind === "screen") {
+        r.stopTap?.();
+        r.stopTap = null;
+      }
       setter(null);
     };
     r.toggleShare = () =>
@@ -496,13 +533,24 @@ export default function Call({
               navigator.mediaDevices
                 .getDisplayMedia({
                   video: {
-                    frameRate: { ideal: 30, max: 60 },
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 },
+                    frameRate: { ideal: QUALITY[qRef.current].fps, max: 60 },
+                    width: { ideal: Math.round((QUALITY[qRef.current].h * 16) / 9) },
+                    height: { ideal: QUALITY[qRef.current].h },
                   },
                   audio: srcRef.current === "default",
                 })
                 .then(async (s) => {
+                  // Desktop app, sharing one window: that program's own sound (see desktop/app-audio.ps1).
+                  try {
+                    const q = await window.dispatchDesktop?.shareQuality?.();
+                    if (q?.appAudio) {
+                      const tap = appAudioTrack();
+                      if (tap) {
+                        s.addTrack(tap.track);
+                        room.current.stopTap = tap.stop;
+                      }
+                    }
+                  } catch {}
                   // Sound from a device you chose (a virtual cable, Stereo Mix) instead of the default output.
                   if (srcRef.current !== "default")
                     try {
@@ -725,18 +773,22 @@ export default function Call({
                     <MoreHorizontal size={16} />
                   </button>
                   {!mine && (
-                    <button
-                      aria-label={streamOff.includes(p.id) ? "Turn the stream sound on" : "Turn the stream sound off"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const off = !streamOff.includes(p.id),
-                          id = meta[p.id]?.screen;
-                        for (const [key, el] of room.current.audio) if (key === p.id + ":" + id) el.volume = off ? 0 : 1;
-                        setStreamOff((l) => (off ? [...l, p.id] : l.filter((x) => x !== p.id)));
-                      }}
-                    >
-                      {streamOff.includes(p.id) ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                    </button>
+                    <span className="tile-vol" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        aria-label="Stream volume"
+                        value={Math.round((streamVol[p.id] ?? 1) * 100)}
+                        onChange={(e) => setStreamVol((v) => ({ ...v, [p.id]: Number(e.target.value) / 100 }))}
+                      />
+                      <button
+                        aria-label={(streamVol[p.id] ?? 1) === 0 ? "Turn the stream sound on" : "Turn the stream sound off"}
+                        onClick={() => setStreamVol((v) => ({ ...v, [p.id]: (v[p.id] ?? 1) === 0 ? 1 : 0 }))}
+                      >
+                        {(streamVol[p.id] ?? 1) === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                      </button>
+                    </span>
                   )}
                 </span>
                 <button
@@ -863,11 +915,7 @@ export default function Call({
             ...[["Stream sound: full", 1], ["Stream sound: half", 0.4], ["Stream sound: off", 0]].map(([label, v]) => ({
               label,
               icon: <Headphones size={14} />,
-              onClick: () => {
-                const id = meta[p.id]?.screen;
-                for (const [key, el] of room.current.audio)
-                  if (key === p.id + ":" + id) el.volume = v;
-              },
+              onClick: () => setStreamVol((cur) => ({ ...cur, [p.id]: v })),
             })),
             "-",
           ]
@@ -1006,6 +1054,15 @@ export default function Call({
                 )}
               </div>
             )}
+            <button
+              className={"call-btn" + (deaf ? " off" : "")}
+              aria-pressed={deaf}
+              title={deaf ? "Undeafen" : "Deafen"}
+              aria-label={deaf ? "Undeafen" : "Deafen"}
+              onClick={() => setDeaf(!deaf)}
+            >
+              {deaf ? <HeadphoneOff size={20} /> : <Headphones size={20} />}
+            </button>
             {outs.length > 1 && (
               <div className="call-react">
                 <button
@@ -1038,15 +1095,6 @@ export default function Call({
               </div>
             )}
             <button
-              className={"call-btn" + (deaf ? " off" : "")}
-              aria-pressed={deaf}
-              title={deaf ? "Undeafen" : "Deafen"}
-              aria-label={deaf ? "Undeafen" : "Deafen"}
-              onClick={() => setDeaf(!deaf)}
-            >
-              {deaf ? <HeadphoneOff size={20} /> : <Headphones size={20} />}
-            </button>
-            <button
               className={"call-btn" + (cam ? " on" : "")}
               aria-pressed={!!cam}
               title={cam ? "Turn off camera" : "Turn on camera"}
@@ -1066,18 +1114,34 @@ export default function Call({
             >
               {sharing ? <MonitorOff size={20} /> : <MonitorUp size={20} />}
             </button>
-            {mics.length > 1 && (
+            {(
               <div className="call-react">
                 <button
                   className="call-caret"
-                  title="Choose the sound that is shared with your screen"
-                  aria-label="Choose the sound that is shared with your screen"
+                  title="Screen share quality and sound"
+                  aria-label="Screen share quality and sound"
                   onClick={() => setMenu(menu === "src" ? "" : "src")}
                 >
                   <ChevronUp size={14} />
                 </button>
                 {menu === "src" && (
                   <div className="call-picker list">
+                    <span className="picker-title">Quality</span>
+                    {Object.entries(QUALITY).map(([k, q]) => (
+                      <button
+                        key={k}
+                        onClick={() => {
+                          setShareQ(k);
+                          try {
+                            localStorage.setItem("dispatch-share-q", k);
+                          } catch {}
+                          setMenu("");
+                        }}
+                      >
+                        {shareQ === k ? "✓ " : ""}
+                        <b>{q.label}</b> <small>{q.note}</small>
+                      </button>
+                    ))}
                     <span className="picker-title">Sound shared with your screen</span>
                     {[{ deviceId: "default", label: "Everything this computer plays (default output)" }, ...mics].map((d, i) => (
                       <button

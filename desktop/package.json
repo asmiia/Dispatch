@@ -26,9 +26,13 @@
       "main.js",
       "preload.js",
       "picker-preload.js",
+      "app-audio.ps1",
       "renderer/**",
       "build/icon.png",
       "package.json"
+    ],
+    "asarUnpack": [
+      "app-audio.ps1"
     ],
     "win": {
       "target": [
