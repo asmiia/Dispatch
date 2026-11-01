@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.local/
+.local-backup-*/
+.env*
+!.env.example
+*.log
+artifacts/
+
+# Desktop app
+desktop/node_modules/
+desktop/dist/

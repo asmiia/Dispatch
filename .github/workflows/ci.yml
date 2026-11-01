@@ -1,0 +1,32 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run build
+      - run: npm test
+      - run: npm audit --omit=dev
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t dispatch:ci .
+      - name: Smoke test the image
+        run: |
+          docker run -d --name dispatch -p 3080:3080 dispatch:ci
+          for i in $(seq 1 60); do curl -fs http://localhost:3080/health && break; sleep 2; done
+          curl -fs http://localhost:3080/health | grep '"status":"ok"'
+          docker exec dispatch node scripts/backup.mjs backup
+          docker exec dispatch node scripts/backup.mjs verify
+          docker logs dispatch | tail -20

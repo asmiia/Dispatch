@@ -1,0 +1,126 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Dispatch</title>
+<meta
+  http-equiv="Content-Security-Policy"
+  content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'"
+/>
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    height: 100vh;
+    display: grid;
+    place-items: center;
+    background: #000;
+    color: #ededed;
+    font:
+      15px system-ui,
+      sans-serif;
+  }
+  main {
+    width: min(420px, 90vw);
+    display: grid;
+    gap: 14px;
+  }
+  .mark {
+    width: 52px;
+    height: 52px;
+    border-radius: 13px;
+    background: #f2f2f2;
+    display: grid;
+    place-items: center;
+  }
+  h1 {
+    margin: 6px 0 0;
+    font-size: 26px;
+    letter-spacing: -0.6px;
+  }
+  p {
+    margin: 0;
+    color: #8a8a8a;
+    line-height: 1.5;
+  }
+  input {
+    height: 46px;
+    padding: 0 14px;
+    border: 1px solid #2e2e2e;
+    border-radius: 10px;
+    background: #0a0a0a;
+    color: inherit;
+    font: inherit;
+  }
+  input:focus {
+    outline: 0;
+    border-color: #666;
+  }
+  button {
+    height: 46px;
+    border: 0;
+    border-radius: 10px;
+    background: #ededed;
+    color: #111;
+    font: 600 15px system-ui;
+    cursor: pointer;
+  }
+  button:disabled {
+    opacity: 0.5;
+  }
+  .drag {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 36px;
+    -webkit-app-region: drag;
+  }
+  .error {
+    color: #ff8a8a;
+    min-height: 20px;
+    font-size: 13.5px;
+  }
+</style>
+<div class="drag"></div>
+<main>
+  <div class="mark">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+      <path d="M3 11 21 3l-8 18-2-8-8-2Z" fill="#111" />
+      <path
+        d="m11 13 10-10"
+        stroke="#f2f2f2"
+        stroke-width="1.6"
+        stroke-linecap="round"
+      />
+    </svg>
+  </div>
+  <h1>Connect to Dispatch</h1>
+  <p>
+    Enter the address of your Dispatch server, for example
+    <b>dispatch.example.com</b>.
+  </p>
+  <form id="f" style="display: grid; gap: 14px">
+    <input
+      id="address"
+      placeholder="dispatch.example.com"
+      autofocus
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <div class="error" id="error" role="alert"></div>
+    <button id="go">Continue</button>
+  </form>
+</main>
+<script>
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    go.disabled = true;
+    error.textContent = "";
+    const r = await window.dispatchDesktop.connect(address.value.trim());
+    if (!r.ok) {
+      error.textContent = r.error;
+      go.disabled = false;
+    }
+  });
+</script>

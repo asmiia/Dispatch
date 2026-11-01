@@ -1,0 +1,254 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Share your screen</title>
+<meta
+  http-equiv="Content-Security-Policy"
+  content="default-src 'self'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'"
+/>
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #0b0b0b;
+    color: #ededed;
+    font:
+      14px system-ui,
+      sans-serif;
+  }
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin: 16px 16px 0;
+    padding: 5px;
+    border-radius: 12px;
+    background: #000;
+    border: 1px solid #1f1f1f;
+  }
+  .tabs button {
+    flex: 1;
+    height: 38px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: #9a9a9a;
+    font: 600 14px system-ui;
+    cursor: pointer;
+  }
+  .tabs button.on {
+    background: #1a1a1a;
+    color: #fff;
+  }
+  .grid {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    align-content: start;
+  }
+  .card {
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    background: none;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .card img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    border-radius: 10px;
+    background: #111;
+    border: 1px solid #1f1f1f;
+  }
+  .card:hover img {
+    border-color: #555;
+  }
+  .card.on {
+    border-color: #4c9aff;
+  }
+  .card span {
+    display: block;
+    margin: 8px 2px 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .empty {
+    grid-column: 1 / -1;
+    color: #777;
+    text-align: center;
+    padding: 40px 0;
+  }
+  footer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 16px;
+    border-top: 1px solid #1f1f1f;
+    background: #080808;
+  }
+  footer .label {
+    flex: 1;
+    min-width: 0;
+  }
+  footer .label strong {
+    display: block;
+    font-size: 15px;
+  }
+  footer .label small {
+    color: #8a8a8a;
+  }
+  .quality {
+    display: flex;
+    padding: 4px;
+    border-radius: 10px;
+    background: #000;
+    border: 1px solid #1f1f1f;
+  }
+  .quality button {
+    height: 34px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 7px;
+    background: none;
+    color: #9a9a9a;
+    font: 600 13px system-ui;
+    cursor: pointer;
+  }
+  .quality button.on {
+    background: #1a1a1a;
+    color: #fff;
+  }
+  label.audio {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #cfcfcf;
+    font-size: 13px;
+  }
+  .go {
+    height: 40px;
+    padding: 0 22px;
+    border: 0;
+    border-radius: 10px;
+    background: #ededed;
+    color: #111;
+    font: 700 14px system-ui;
+    cursor: pointer;
+  }
+  .go:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+</style>
+<div class="tabs" id="tabs">
+  <button data-tab="window" class="on">Applications</button>
+  <button data-tab="screen">Entire screen</button>
+</div>
+<div class="grid" id="grid"></div>
+<footer>
+  <div class="label">
+    <strong id="name">Nothing selected</strong><small id="detail"></small>
+  </div>
+  <label class="audio" id="audiobox"
+    ><input type="checkbox" id="audio" checked /> Share system audio</label
+  >
+  <div class="quality" id="quality">
+    <button data-q="sd">SD</button>
+    <button data-q="hd" class="on">HD</button>
+    <button data-q="max">Max</button>
+  </div>
+  <button class="go" id="go" disabled>Share</button>
+</footer>
+<script>
+  const presets = {
+    sd: { w: 1280, h: 720, fps: 30, text: "720p · 30fps" },
+    hd: { w: 1920, h: 1080, fps: 30, text: "1080p · 30fps" },
+    max: { w: 2560, h: 1440, fps: 60, text: "1440p · 60fps" },
+  };
+  let sources = [],
+    tab = "window",
+    picked = null,
+    q = "hd";
+  const $ = (id) => document.getElementById(id);
+  function show() {
+    const grid = $("grid");
+    grid.textContent = "";
+    const list = sources.filter((s) => (tab === "screen") === s.screen);
+    if (!list.length) {
+      const e = document.createElement("div");
+      e.className = "empty";
+      e.textContent =
+        tab === "screen" ? "No screens found." : "No windows found.";
+      grid.append(e);
+    }
+    for (const s of list) {
+      const b = document.createElement("button");
+      b.className = "card" + (picked?.id === s.id ? " on" : "");
+      const i = document.createElement("img");
+      i.src = s.thumb;
+      const t = document.createElement("span");
+      t.textContent = s.name;
+      b.append(i, t);
+      b.onclick = () => {
+        picked = s;
+        show();
+        update();
+      };
+      b.ondblclick = () => finish();
+      grid.append(b);
+    }
+  }
+  function update() {
+    $("name").textContent = picked ? picked.name : "Nothing selected";
+    $("detail").textContent = presets[q].text;
+    $("go").disabled = !picked;
+  }
+  function finish() {
+    if (picked)
+      window.picker.pick({
+        id: picked.id,
+        quality: presets[q],
+        audio: $("audio").checked,
+      });
+  }
+  $("tabs").onclick = (e) => {
+    const t = e.target.dataset.tab;
+    if (!t) return;
+    tab = t;
+    [...$("tabs").children].forEach((b) =>
+      b.classList.toggle("on", b.dataset.tab === t),
+    );
+    show();
+  };
+  $("quality").onclick = (e) => {
+    const k = e.target.dataset.q;
+    if (!k) return;
+    q = k;
+    [...$("quality").children].forEach((b) =>
+      b.classList.toggle("on", b.dataset.q === k),
+    );
+    update();
+  };
+  $("go").onclick = finish;
+  window.picker.onSources((list) => {
+    sources = list;
+    show();
+    update();
+  });
+  document.addEventListener(
+    "keydown",
+    (e) => e.key === "Escape" && window.close(),
+  );
+</script>

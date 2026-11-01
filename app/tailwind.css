@@ -1,0 +1,9 @@
+/* Layer order: Fluid's utilities beat the older hand-written CSS, which sits in "legacy". */
+@layer theme, base, legacy, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "./globals.css" layer(legacy);
+@import "./settings.css" layer(legacy);
+@import "./select.css" layer(legacy);
+@import "./theme.css" layer(legacy);
+@import "./features.css" layer(legacy);
+@import "tailwindcss/utilities.css" layer(utilities);
