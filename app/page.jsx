@@ -1430,6 +1430,7 @@ export default function Workspace() {
             openThread(call.threadId);
           }}
           onLeave={() => setCall(null)}
+          agentOf={agentOf}
         />
       )}
       <Toasts list={toasts} onClose={closeToast} />

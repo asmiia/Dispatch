@@ -20,6 +20,7 @@ import {
   VideoOff,
 } from "lucide-react";
 import UserAvatar from "./user-avatar";
+import AgentAvatar from "./agent-avatar";
 import { hueFor } from "./gradient";
 
 const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -53,6 +54,7 @@ export default function Call({
   here,
   onReturn,
   onLeave,
+  agentOf,
 }) {
   // The call itself is mounted once for the whole app, so moving between conversations does not end it.
   // It draws its large view inside the conversation it belongs to, and a small control strip in the
@@ -614,7 +616,12 @@ export default function Call({
             >
               {p.agent ? (
                 <span className="agent-face">
-                  <Bot size={44} />
+                  <AgentAvatar
+                    className="avatar"
+                    name={p.name}
+                    program={agentOf?.(p.name)?.program}
+                    model={agentOf?.(p.name)?.model}
+                  />
                 </span>
               ) : camera ? (
                 <Feed stream={camera} mirror={mine} />
@@ -794,7 +801,12 @@ export default function Call({
         {tiles.map((p) =>
           p.agent ? (
             <span key={p.id} className="agent-face mini" title={p.name}>
-              <Bot size={15} />
+              <AgentAvatar
+                className="avatar"
+                name={p.name}
+                program={agentOf?.(p.name)?.program}
+                model={agentOf?.(p.name)?.model}
+              />
             </span>
           ) : (
             <UserAvatar
