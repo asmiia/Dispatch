@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0-alpha
+
 ### Calls
 
 - Voice calls in any conversation (phone button in the header): WebRTC audio between people, mute, deafen,
