@@ -153,7 +153,7 @@ function trust() {
       const choice = await choose(sources);
       if (!choice) return callback({});
       const source = sources.find((s) => s.id === choice.id);
-      // Sharing one window: take the sound of that program only, as Discord does (Windows). Sharing a whole
+      // Sharing one window: take the sound of that program only, (Windows). Sharing a whole
       // screen: everything the default output plays.
       const only = process.platform === "win32" && choice.audio && source?.id.startsWith("window:");
       lastShare = { ...choice.quality, appAudio: !!only, audio: !!choice.audio };
@@ -175,7 +175,7 @@ function trust() {
 }
 
 // One program's sound, from desktop/app-audio.ps1 (Windows process loopback). It reads from the audio engine and
-// never touches the program itself, so it is safe next to games and their anti-cheat.
+// never touches the program itself.
 let appAudio = null;
 function stopAppAudio() {
   try {

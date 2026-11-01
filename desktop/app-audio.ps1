@@ -1,5 +1,5 @@
 # Captures the sound of one program, and nothing else, with the Windows process loopback API (Windows 10 2004 and
-# later). It is the same operating system feature Discord uses: it reads from the audio engine, it does not touch,
+# later). It reads from the audio engine, it does not touch,
 # hook or inject into the program. Raw 16-bit 48 kHz stereo samples go to standard output.
 #   powershell -File app-audio.ps1 -ProcessId 1234      (or -Hwnd 395842 to find the program from its window)
 param([int]$ProcessId = 0, [long]$Hwnd = 0)
