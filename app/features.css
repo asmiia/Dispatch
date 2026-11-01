@@ -1133,3 +1133,8 @@ html[data-desktop] .titlebar { padding-right: 0 !important; }
 .call .call-grid > .call-tile { aspect-ratio: 16 / 9; height: auto; width: 100%; max-width: none; }
 .call .call-grid > .call-tile.screen-tile { grid-column: 1 / -1; max-width: 960px; justify-self: center; }
 .call .call-strip > .call-tile { aspect-ratio: auto; }
+/* tiles shrink to fit the height of the call view instead of being cut off by the controls */
+.call .call-grid { container-type: size; align-content: safe center; }
+.call .call-grid > .call-tile { max-width: min(480px, calc((100cqh - 6px) * 16 / 9)); justify-self: center; }
+.call .call-grid > .call-tile.screen-tile { max-width: min(960px, calc((100cqh - 6px) * 16 / 9)); }
+.call .call-grid > .call-tile:only-child { max-width: min(440px, calc((100cqh - 6px) * 16 / 9)); }
