@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import UserAvatar from "./user-avatar";
 import { listen } from "./stt";
+import { speak, warm } from "./tts";
 import AgentAvatar from "./agent-avatar";
 import { hueFor } from "./gradient";
 
@@ -309,15 +310,15 @@ export default function Call({
     }
     // An agent spoke: read it aloud (unless you are deafened) and show it as a caption.
     let clear;
-    function hear(e, speak = true) {
+    function hear(e, aloud = true) {
       setSaid({ id: e.id, from: e.from, name: e.name, text: e.text });
       clearTimeout(clear);
       clear = setTimeout(() => setSaid(null), 3000 + e.text.length * 60);
-      if (!speak) return;
-      if (live.current.deaf || !("speechSynthesis" in window)) return;
-      const u = new SpeechSynthesisUtterance(e.text);
-      u.onend = () => setSaid((c) => (c?.id === e.id ? null : c));
-      window.speechSynthesis.speak(u);
+      if (!aloud) return;
+      // Start getting the natural voice ready as soon as an agent first speaks.
+      speak(e.text, { muted: () => live.current.deaf }).then(() =>
+        setSaid((c) => (c?.id === e.id ? null : c)),
+      );
     }
     async function loop() {
       if (stopped) return;
@@ -568,6 +569,10 @@ export default function Call({
       );
     };
   }, [listening]);
+  // Get the agents' voice ready while you are in the call.
+  useEffect(() => {
+    warm();
+  }, []);
   const canListen =
     typeof window !== "undefined" &&
     typeof Worker !== "undefined" &&
