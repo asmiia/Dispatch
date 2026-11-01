@@ -28,8 +28,8 @@ export default function CallPreview({ people, agentOf, onJoin }) {
         {people.slice(0, 6).map((p) => (
           <div
             key={p.id}
-            className="cp-tile"
-            style={{ "--h": hueFor(p.name), ...tintVars(tints[p.uid + ":" + p.avatar_v]) }}
+            className={"cp-tile" + (p.avatar_v && !p.agent ? " has-pic" : "")}
+            style={{ "--h": hueFor(p.name), ...tintVars(tints[p.uid + ":" + p.avatar_v]), ...(p.avatar_v && !p.agent ? { "--pic": `url(/api/avatars/${p.uid}?v=${p.avatar_v})` } : {}) }}
           >
             {p.agent ? (
               <span className="agent-face">

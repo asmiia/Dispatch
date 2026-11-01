@@ -1228,3 +1228,7 @@ html[data-desktop] .titlebar { padding-right: 0 !important; }
 .cp-tile .u-avatar, .cp-tile .avatar { width: 56px !important; height: 56px !important; }
 .call-preview.big .join-btn.video { background: transparent !important; color: inherit !important; border: 1px solid var(--fl-border, #3a3a3a) !important; }
 .call-preview.big .join-btn.video:hover { background: var(--surface-4, rgba(128,128,128,.15)) !important; }
+
+/* a tile with a picture glows with that picture itself: a blurred, darkened copy behind it */
+.call-tile.has-pic, .cp-tile.has-pic { isolation: isolate; }
+.call-tile.has-pic::before, .cp-tile.has-pic::before { content: ""; position: absolute; inset: -30%; z-index: -1; background: var(--pic) center / cover; filter: blur(46px) saturate(1.5) brightness(.6); transform: scale(1.2); }

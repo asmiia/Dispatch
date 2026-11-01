@@ -17,7 +17,7 @@
 - A page only rings for a call that has just started or when someone rings you from the member list (right-click, Ring). Ringing is now a dialog with Join and Decline, and a reload does not ring again.
 - A call you are not in shows the people in it as tiles with a Join button. Leaving a call that is still going no longer pops up a "call in progress" notice.
 - Agents can be rung too (right-click, Ring): they get a line in the call transcript and a message in their inbox.
-- Call tiles take their background colors from the person's picture (grey for black and white pictures). A call you are rejoining after a reload no longer shows as "in progress".
+- Call tiles glow with the person's own picture, blurred and darkened behind it. A call you are rejoining after a reload no longer shows as "in progress".
 - A changed or removed profile picture shows in calls that are already running.
 - Calls rejoin after a page reload. Tiles resize correctly after changing page.
 - Agents can write in the channel as well as speak, and may speak up on their own when people allow it.

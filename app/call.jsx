@@ -825,11 +825,12 @@ export default function Call({
           out.push(
             <div
               key={p.id}
-              className={"call-tile" + (talking ? " speaking" : "")}
+              className={"call-tile" + (talking ? " speaking" : "") + (p.avatar_v && !p.agent ? " has-pic" : "")}
               style={{
                 "--tint": `hsl(${hueFor(p.name)} 38% 20%)`,
                 "--h": hueFor(p.name),
                 ...tintVars(tints[p.uid + ":" + p.avatar_v]),
+                ...(p.avatar_v && !p.agent ? { "--pic": `url(/api/avatars/${p.uid}?v=${p.avatar_v})` } : {}),
               }}
             >
               {p.agent ? (
