@@ -111,6 +111,17 @@ const size = (value) =>
     : value < 1048576
       ? `${(value / 1024).toFixed(1)} KB`
       : `${(value / 1048576).toFixed(1)} MB`;
+// A page left open across an update asks for things that moved and gets a web page back instead of data.
+// Reload once, with a guard so a real fault can never loop.
+function reloadForUpdate() {
+  try {
+    const last = Number(sessionStorage.getItem("dispatch-reloaded") || 0);
+    if (Date.now() - last < 20000) return false;
+    sessionStorage.setItem("dispatch-reloaded", String(Date.now()));
+  } catch {}
+  window.location.reload();
+  return true;
+}
 async function api(path, body) {
   const response = await fetch("/api/" + path, {
     cache: "no-store",
@@ -122,7 +133,17 @@ async function api(path, body) {
         }
       : {}),
   });
-  const value = await response.json();
+  let value;
+  try {
+    value = await response.json();
+  } catch {
+    if (reloadForUpdate()) throw new Error("Updating Dispatch...");
+    throw new Error(
+      response.status >= 500
+        ? "The server is restarting. Try again in a moment."
+        : "Unexpected response from the server.",
+    );
+  }
   if (!response.ok) {
     const error = new Error(value.error || "Request failed");
     error.status = response.status;
@@ -541,6 +562,42 @@ export default function Workspace() {
     );
   }, [liveCalls, user?.id]);
   useEffect(() => () => stopRing.current?.(), []);
+  const callRef = useRef(null);
+  callRef.current = call;
+  // New version deployed: reload when nobody is looking, or after a short notice. Never in the middle of a call.
+  useEffect(() => {
+    const mine = process.env.NEXT_PUBLIC_BUILD;
+    if (!mine) return;
+    let told = false;
+    const look = async () => {
+      try {
+        const r = await fetch("/api/version", { cache: "no-store" });
+        const { build } = await r.json();
+        if (!build || build === mine || told) return;
+        if (document.hidden && !callRef.current) return void reloadForUpdate();
+        told = true;
+        toast({
+          title: "Dispatch was updated",
+          body: callRef.current ? "Reload when you leave the call." : "Reloading in a few seconds.",
+          sticky: !!callRef.current,
+          actions: [{ label: "Reload now", primary: true, onClick: () => window.location.reload() }],
+        });
+        if (!callRef.current) setTimeout(() => !callRef.current && reloadForUpdate(), 5000);
+      } catch {}
+    };
+    const t = setInterval(look, 20000);
+    const stale = (e) => {
+      const msg = String(e?.reason?.message || e?.message || "");
+      if (/ChunkLoadError|Loading chunk|Unexpected token '<'|is not valid JSON/i.test(msg)) reloadForUpdate();
+    };
+    window.addEventListener("unhandledrejection", stale);
+    window.addEventListener("error", stale);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("unhandledrejection", stale);
+      window.removeEventListener("error", stale);
+    };
+  }, []);
   // Hidden inside the desktop app itself.
   const [desktop, setDesktop] = useState(true);
   useEffect(() => setDesktop(!!window.dispatchDesktop), []);

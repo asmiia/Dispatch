@@ -1,4 +1,6 @@
 export default {
+  // Each build gets an id, so an open page can tell that a newer version has been deployed.
+  env: { NEXT_PUBLIC_BUILD: String(Date.now()) },
   // The Fluid Functionalism components are third-party TypeScript with a few typing mismatches against our versions.
   typescript: { ignoreBuildErrors: true },
   serverExternalPackages: ["node:sqlite"],

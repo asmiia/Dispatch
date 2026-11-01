@@ -38,6 +38,8 @@ export async function GET(request, { params }) {
     const sec = security(),
       url = new URL(request.url);
     const acc = accounts(sec);
+    if (path.join("/") === "version")
+      return Response.json({ build: process.env.NEXT_PUBLIC_BUILD || "" });
     if (path.join("/") === "auth/status")
       return Response.json({
         needs_setup: sec.needsSetup(),
