@@ -156,20 +156,19 @@ function trust() {
       // Sharing one window: take the sound of that program only, as Discord does (Windows). Sharing a whole
       // screen: everything the default output plays.
       const only = process.platform === "win32" && choice.audio && source?.id.startsWith("window:");
-      lastShare = { ...choice.quality, appAudio: !!only };
+      lastShare = { ...choice.quality, appAudio: !!only, audio: !!choice.audio };
       if (only) startAppAudio(Number(source.id.split(":")[1]));
       callback(
         source
           ? {
               video: source,
-              audio:
-                choice.audio && !only && process.platform === "win32"
-                  ? "loopback"
-                  : undefined,
+              // The page always asks for sound and a window capture fails without it; the page drops the track
+              // again when you turned sound off or the program's own sound is used instead.
+              audio: process.platform === "win32" ? "loopback" : undefined,
             }
           : {},
       );
-    } catch (e) { console.log("SHAREERR", e && e.stack);
+    } catch {
       callback({});
     }
   });

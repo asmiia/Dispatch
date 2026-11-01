@@ -543,6 +543,7 @@ export default function Call({
                   // Desktop app, sharing one window: that program's own sound (see desktop/app-audio.ps1).
                   try {
                     const q = await window.dispatchDesktop?.shareQuality?.();
+                    if (q && (q.appAudio || q.audio === false)) for (const t of s.getAudioTracks()) (s.removeTrack(t), t.stop());
                     if (q?.appAudio) {
                       const tap = appAudioTrack();
                       if (tap) {
