@@ -452,10 +452,16 @@ export async function POST(request, { params }) {
     }
     if (route === "messages/star")
       return Response.json(acc.starThread(db, body));
-    if (route === "settings/avatar")
-      return Response.json(acc.setAvatar(actor, body));
-    if (route === "settings/avatar/remove")
-      return Response.json(acc.removeAvatar(actor));
+    if (route === "settings/avatar") {
+      const result = acc.setAvatar(actor, body);
+      calls.refreshAvatar(acc.browserUser(actor).id, result.avatar_v);
+      return Response.json(result);
+    }
+    if (route === "settings/avatar/remove") {
+      const result = acc.removeAvatar(actor);
+      calls.refreshAvatar(acc.browserUser(actor).id, null);
+      return Response.json(result);
+    }
     if (route === "settings/sessions/revoke") {
       const result = acc.revokeSession(actor, body.id);
       return Response.json(result, {

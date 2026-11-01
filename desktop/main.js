@@ -174,7 +174,7 @@ function trust() {
   });
 }
 
-// One program's sound, from desktop/app-audio.ps1 (Windows process loopback). It reads from the audio engine and
+// One program's sound, from desktop/app-audio.cs (Windows process loopback). It reads from the audio engine and
 // never touches the program itself.
 let appAudio = null;
 function stopAppAudio() {
@@ -185,12 +185,8 @@ function stopAppAudio() {
 }
 function startAppAudio(hwnd) {
   stopAppAudio();
-  const file = path.join(__dirname, "app-audio.ps1").replace("app.asar", "app.asar.unpacked");
-  const child = require("node:child_process").spawn(
-    "powershell.exe",
-    ["-MTA", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", file, "-Hwnd", String(hwnd)],
-    { windowsHide: true },
-  );
+  const file = path.join(__dirname, "build", "app-audio.exe").replace("app.asar", "app.asar.unpacked");
+  const child = require("node:child_process").spawn(file, ["--hwnd", String(hwnd)], { windowsHide: true });
   appAudio = child;
   child.stdout.on("data", (chunk) => win?.webContents.send("app-audio", chunk));
   let err = "";

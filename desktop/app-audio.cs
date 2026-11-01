@@ -1,10 +1,6 @@
-# Captures the sound of one program, and nothing else, with the Windows process loopback API (Windows 10 2004 and
-# later). It reads from the audio engine, it does not touch,
-# hook or inject into the program. Raw 16-bit 48 kHz stereo samples go to standard output.
-#   powershell -File app-audio.ps1 -ProcessId 1234      (or -Hwnd 395842 to find the program from its window)
-param([int]$ProcessId = 0, [long]$Hwnd = 0)
-$ErrorActionPreference = "Stop"
-Add-Type -TypeDefinition @"
+// Captures the sound of one program, and nothing else, with the Windows process loopback API (Windows 10 2004 and
+// later). It reads from the audio engine and does not touch, hook or inject into the program. Raw 16-bit 48 kHz
+// stereo samples go to standard output.   app-audio.exe <processId> | app-audio.exe --hwnd <windowHandle>
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -106,7 +102,23 @@ public static class AppAudio
         }
     }
 }
-"@
-if ($ProcessId -eq 0 -and $Hwnd -ne 0) { $ProcessId = [AppAudio]::ProcessOf($Hwnd) }
-if ($ProcessId -eq 0) { [Console]::Error.WriteLine("No program found."); exit 2 }
-try { [AppAudio]::Capture([uint32]$ProcessId) } catch { [Console]::Error.WriteLine($_.Exception.Message); exit 3 }
+public static class Program
+{
+    [STAThread]
+    public static int Main(string[] args)
+    {
+        uint pid = 0;
+        try
+        {
+            if (args.Length >= 2 && args[0] == "--hwnd") pid = AppAudio.ProcessOf(long.Parse(args[1]));
+            else if (args.Length >= 1) pid = uint.Parse(args[0]);
+        }
+        catch { }
+        if (pid == 0) { Console.Error.WriteLine("No program found."); return 2; }
+        int code = 0;
+        // COM activation of the audio interface needs a multithreaded apartment.
+        var t = new Thread(() => { try { AppAudio.Capture(pid); } catch (Exception e) { Console.Error.WriteLine(e.Message); code = 3; } });
+        t.SetApartmentState(ApartmentState.MTA); t.Start(); t.Join();
+        return code;
+    }
+}
