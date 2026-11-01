@@ -547,7 +547,7 @@ export default function Call({
                   audio: srcRef.current === "default",
                 })
                 .then(async (s) => {
-                  // Desktop app, sharing one window: that program's own sound (see desktop/app-audio.ps1).
+                  // Desktop app, sharing one window: that program's own sound (see desktop/app-audio.cs).
                   try {
                     const q = await window.dispatchDesktop?.shareQuality?.();
                     if (q && (q.appAudio || q.audio === false)) for (const t of s.getAudioTracks()) (s.removeTrack(t), t.stop());

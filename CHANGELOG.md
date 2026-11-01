@@ -26,7 +26,7 @@
 
 ### Desktop app
 
-- 0.4.9-alpha: styled scrollbar in the share picker. 0.4.8: window shares work again. 0.4.7: the update check
+- 0.4.10-alpha: program-sound capture is a small compiled helper instead of a PowerShell script. 0.4.9-alpha: styled scrollbar in the share picker. 0.4.8: window shares work again. 0.4.7: the update check
   says what it found. 0.4.6: per-program sound capture.
 
 ## 0.3.0-alpha

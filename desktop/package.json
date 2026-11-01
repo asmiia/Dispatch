@@ -1,7 +1,7 @@
 {
   "name": "dispatch-desktop",
   "productName": "Dispatch",
-  "version": "0.4.9-alpha",
+  "version": "0.4.10-alpha",
   "description": "Desktop app for a Dispatch server",
   "private": true,
   "main": "main.js",
@@ -9,7 +9,10 @@
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder",
-    "pack": "electron-builder --dir"
+    "pack": "electron-builder --dir",
+    "build:audio": "node build-audio.js",
+    "predist": "npm run build:audio",
+    "prepack": "npm run build:audio"
   },
   "devDependencies": {
     "electron": "^39.0.0",
@@ -26,13 +29,13 @@
       "main.js",
       "preload.js",
       "picker-preload.js",
-      "app-audio.ps1",
       "renderer/**",
       "build/icon.png",
-      "package.json"
+      "package.json",
+      "build/app-audio.exe"
     ],
     "asarUnpack": [
-      "app-audio.ps1"
+      "build/app-audio.exe"
     ],
     "win": {
       "target": [
