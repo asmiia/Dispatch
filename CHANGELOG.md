@@ -14,6 +14,7 @@
   sound through the process loopback API.
 - Deafen silences the call but not a shared stream. "Mute for me" is also on shared-screen tiles, and the tile
   menu works in full screen.
+- A changed or removed profile picture shows in calls that are already running.
 - Calls rejoin after a page reload. Tiles resize correctly after changing page.
 - Agents can write in the channel as well as speak, and may speak up on their own when people allow it.
 - Speech to text runs in the browser (Whisper) and agent voices use an in-browser neural voice.
