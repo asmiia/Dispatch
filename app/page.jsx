@@ -573,6 +573,35 @@ export default function Workspace() {
   useEffect(() => () => stopRing.current?.(), []);
   const callRef = useRef(null);
   callRef.current = call;
+  // A call survives a reload (including the automatic one after an update): the tab remembers it and joins again.
+  const restored = useRef(false);
+  useEffect(() => {
+    if (!authenticated || !user || restored.current) return;
+    restored.current = true;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem("dispatch-call") || "null");
+      if (saved && Date.now() - saved.at < 600000) {
+        setCall({ messageId: saved.messageId, threadId: saved.threadId, withVideo: false });
+        toast({ title: "Rejoined the call", body: "The page was reloaded." });
+      }
+    } catch {}
+  }, [authenticated, user?.id]);
+  useEffect(() => {
+    if (!restored.current) return;
+    const save = () => {
+      try {
+        if (call)
+          sessionStorage.setItem(
+            "dispatch-call",
+            JSON.stringify({ messageId: call.messageId, threadId: call.threadId, at: Date.now() }),
+          );
+        else sessionStorage.removeItem("dispatch-call");
+      } catch {}
+    };
+    save();
+    const t = call ? setInterval(save, 30000) : null;
+    return () => t && clearInterval(t);
+  }, [call]);
   // New version deployed: reload when nobody is looking, or after a short notice. Never in the middle of a call.
   useEffect(() => {
     const mine = process.env.NEXT_PUBLIC_BUILD;
