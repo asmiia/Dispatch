@@ -1169,8 +1169,13 @@ html[data-desktop] .titlebar { padding-right: 0 !important; }
 .feed-main.call-only .call-slot { flex: 1; min-height: 0; height: auto; }
 .feed-main.call-only .call { height: 100%; flex: 1; }
 
-.tile-vol { display: flex; align-items: center; gap: 6px; background: rgba(20,20,20,.8); border-radius: 12px; padding-left: 4px; backdrop-filter: blur(6px); }
-.tile-vol input[type="range"] { width: 0; opacity: 0; transition: width .18s, opacity .18s; accent-color: #fff; height: 4px; }
-.tile-vol:hover input[type="range"], .tile-vol:focus-within input[type="range"] { width: 90px; opacity: 1; margin: 0 4px 0 6px; }
+.tile-vol { position: relative; display: flex; }
+.tile-vol input[type="range"] { position: absolute; bottom: 42px; left: 50%; width: 110px; height: 4px; margin: 0; transform: translateX(-50%) rotate(-90deg); transform-origin: center; opacity: 0; pointer-events: none; transition: opacity .15s; accent-color: #fff; }
+.tile-vol::before { content: ""; position: absolute; bottom: 36px; left: 50%; width: 36px; height: 130px; transform: translateX(-50%); border-radius: 12px; background: rgba(20,20,20,.85); opacity: 0; pointer-events: none; transition: opacity .15s; }
+.tile-vol:hover input[type="range"], .tile-vol:focus-within input[type="range"] { opacity: 1; pointer-events: auto; }
+.tile-vol:hover::before, .tile-vol:focus-within::before { opacity: 1; pointer-events: auto; }
+.tile-vol input[type="range"] { bottom: 78px; }
 .tile-actions .tile-vol button { background: transparent; }
 .call-picker small { opacity: .65; margin-left: 6px; font-size: 11.5px; }
+
+.call-name.hover-only { z-index: 3; left: 12px !important; bottom: 12px !important; padding: 10px 16px !important; gap: 10px !important; font-size: 18px !important; font-weight: 600; border-radius: 14px !important; background: rgba(15,15,15,.85) !important; }

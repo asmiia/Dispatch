@@ -758,8 +758,8 @@ export default function Call({
                   <i>LIVE</i>
                 </span>
                 <span className="call-name hover-only">
-                  <Monitor size={13} />
-                  {mine ? "You are sharing your screen" : `${p.name}'s screen`}
+                  <Monitor size={18} />
+                  {mine ? "You" : p.name}
                 </span>
                 <span className="tile-actions">
                   <button
