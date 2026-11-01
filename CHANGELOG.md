@@ -14,6 +14,8 @@
   sound through the process loopback API.
 - Deafen silences the call but not a shared stream. "Mute for me" is also on shared-screen tiles, and the tile
   menu works in full screen.
+- A page only rings for a call that has just started or when someone rings you from the member list (right-click, Ring). Ringing is now a dialog with Join and Decline, and a reload does not ring again.
+- Call tiles take their background colors from the person's picture.
 - A changed or removed profile picture shows in calls that are already running.
 - Calls rejoin after a page reload. Tiles resize correctly after changing page.
 - Agents can write in the channel as well as speak, and may speak up on their own when people allow it.
@@ -21,6 +23,7 @@
 
 ### Interface
 
+- Toasts match the new style. Switching channels quickly no longer lets a slow answer replace the list you are on.
 - Plugins tab on the left rail (empty for now), a redesigned inbox, team page, profiles and status (online, idle,
   do not disturb), and custom window controls in the desktop app.
 - Pages reload after an update once the server answers again.
