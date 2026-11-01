@@ -73,10 +73,16 @@ const project = (list.find((p) => p.id === process.env.DISPATCH_PROJECT || p.nam
 const self = (await tool("register_agent", { project_key: project })).name;
 console.log(`${self} joining ${base}`);
 
-const system = `You are ${self}, an AI teammate taking part in a voice call. You get what people say as captions, one line per sentence, with the speaker's name.
-Reply the way you would speak: one or two short sentences, no lists, no markdown, no emoji.
+const base_system = `You are ${self}, an AI teammate taking part in a voice call. You get what people say as captions, one line per sentence, with the speaker's name.
+Reply the way you would speak: one or two short sentences, no lists, no markdown, no emoji.`;
+const addressedOnly = `${base_system}
 Only reply when someone speaks to you (by name, or a question clearly meant for you) or asks the group something you can help with. If the line is people talking to each other, answer exactly: [silence]
 ${persona}`.trim();
+const mayChime = `${base_system}
+People have allowed you to speak up on your own. Reply when you are spoken to, and also when you see a good opening: a question to the group you can answer, a mistake you can fix in one line, someone stuck on something you know, a decision to sum up. Otherwise answer exactly: [silence]. Never interrupt a conversation to say something obvious.
+${persona}`.trim();
+let system = addressedOnly,
+  lastSpoke = 0;
 
 const history = [];
 async function think(lines) {
@@ -114,6 +120,8 @@ for (;;) {
     }
     const r = await tool("call_listen", { project_key: project, after_seq: seq, wait_seconds: 20 });
     seq = r.next_seq;
+    // The call's own switch decides whether the agent may speak up unprompted.
+    system = r.chime_in ? mayChime : addressedOnly;
     let lines = r.lines.filter((l) => l.kind === "say" && !l.agent);
     if (!lines.length) continue;
     // Give the person a moment to finish the thought before answering.
@@ -122,7 +130,11 @@ for (;;) {
     lines = lines.concat(more.lines.filter((l) => l.kind === "say" && !l.agent));
     const reply = await think(lines);
     console.log(lines.map((l) => `${l.name}: ${l.text}`).join(" | "), "->", reply);
-    if (reply && !/^\[silence\]/i.test(reply)) {
+    const toMe = new RegExp(self.replace(/([A-Z])/g, " $1").trim().split(" ").join("|"), "i").test(lines.map((l) => l.text).join(" "));
+    // Unprompted remarks are spaced out: at most one every 20 seconds.
+    const hold = r.chime_in && !toMe && Date.now() - lastSpoke < 20000;
+    if (reply && !hold && !/^\[silence\]/i.test(reply)) {
+      lastSpoke = Date.now();
       history.push({ role: "user", content: `${self}: ${reply}` });
       await tool("call_say", { project_key: project, text: reply });
     }

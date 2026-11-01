@@ -3,6 +3,8 @@
 import { pipeline, env } from "@huggingface/transformers";
 
 env.allowLocalModels = false;
+// Several threads when the page allows it (it is cross-origin isolated); one otherwise.
+env.backends.onnx.wasm.numThreads = self.crossOriginIsolated ? Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)) : 1;
 env.backends.onnx.wasm.wasmPaths = {
   mjs: "/ort/ort-wasm-simd-threaded.asyncify.mjs",
   wasm: "/ort/ort-wasm-simd-threaded.asyncify.wasm",

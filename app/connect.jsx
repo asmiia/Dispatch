@@ -8,6 +8,7 @@ const clients = [
   { id: "codex", name: "Codex", program: "codex" },
   { id: "cursor", name: "Cursor", program: "cursor" },
   { id: "gemini", name: "Gemini CLI", program: "gemini-cli" },
+  { id: "opencode", name: "OpenCode", program: "opencode" },
   { id: "other", name: "Other", program: "agent" },
 ];
 
@@ -42,6 +43,19 @@ function snippet(id, url, token) {
       where: "Save this as .cursor/mcp.json in your project",
       text: json,
     };
+  if (id === "opencode")
+    return {
+      where: "Add this to opencode.json in your project",
+      text: JSON.stringify(
+        {
+          mcp: {
+            dispatch: { type: "remote", url, headers: { Authorization: "Bearer " + token } },
+          },
+        },
+        null,
+        2,
+      ),
+    };
   return {
     where: "Use this in any MCP client that supports HTTP servers",
     text: json,
@@ -69,6 +83,27 @@ function CopyBlock({ text }) {
   );
 }
 
+// One command that teaches the agent how Dispatch works: when to check messages, how to answer @mentions,
+// how to work with other agents, and when to join a call.
+function teach(id, origin) {
+  const get = `${origin}/api/agent-guide`;
+  if (id === "claude")
+    return {
+      where: "Run this once to add the Dispatch skill to Claude Code",
+      text: `mkdir -p ~/.claude/skills/dispatch && curl -fsSL ${get} -o ~/.claude/skills/dispatch/SKILL.md`,
+    };
+  if (id === "cursor")
+    return {
+      where: "Run this in your project to add the Dispatch rule to Cursor",
+      text: `mkdir -p .cursor/rules && curl -fsSL "${get}?format=cursor" -o .cursor/rules/dispatch.mdc`,
+    };
+  const file = id === "gemini" ? "GEMINI.md" : "AGENTS.md";
+  return {
+    where: `Run this in your project to add the Dispatch notes to ${file}`,
+    text: `curl -fsSL "${get}?format=agents" >> ${file}`,
+  };
+}
+
 // Connect an agent in one step: pick the tool, press the button, paste the result.
 export default function Connect({ api, project, projectName, onChanged }) {
   const [client, setClient] = useState("claude"),
@@ -76,8 +111,8 @@ export default function Connect({ api, project, projectName, onChanged }) {
     [agentName, setAgentName] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    url =
-      (typeof window !== "undefined" ? window.location.origin : "") + "/mcp",
+    origin = typeof window !== "undefined" ? window.location.origin : "",
+    url = origin + "/mcp",
     picked = clients.find((c) => c.id === client);
 
   async function create() {
@@ -174,6 +209,19 @@ export default function Connect({ api, project, projectName, onChanged }) {
           </div>
         </div>
       )}
+      {project && token ? (
+        <div className="step-card">
+          <span className="step-num">3</span>
+          <div className="step-body">
+            <strong>Teach it how Dispatch works</strong>
+            <span className="muted small">
+              This tells the agent when to read its messages, how to answer when it is @mentioned, how to work
+              with other agents and when to join a call. {teach(client, origin).where}:
+            </span>
+            <CopyBlock text={teach(client, origin).text} />
+          </div>
+        </div>
+      ) : null}
       {error && (
         <div className="error" role="alert">
           {error}

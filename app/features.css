@@ -1096,3 +1096,14 @@ html[data-desktop] .titlebar { padding-right: 0 !important; }
 .tx-line p { margin: 2px 0 0; font-size: 14px; line-height: 1.4; }
 .tx-empty { padding: 8px 0; }
 .tx-error { padding: 8px 10px; border-radius: 10px; background: rgba(229,72,77,.15); color: #ff8a8d; font-size: 12.5px; line-height: 1.4; }
+.tx-chime { padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--fl-border, #262626); }
+.tx-chime label { display: flex; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.tx-chime input { position: absolute; opacity: 0; pointer-events: none; }
+.tx-chime .track { width: 34px; height: 20px; border-radius: 10px; background: var(--accent, #333); position: relative; transition: background .15s; flex: none; }
+.tx-chime .track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.tx-chime input:checked + .track { background: var(--fluid-accent, #6B97FF); }
+.tx-chime input:checked + .track::after { transform: translateX(14px); }
+
+/* the caption sits inside the call view, above its controls */
+.call { position: relative; }
+.call .call-caption { bottom: 92px; z-index: 5; pointer-events: none; }

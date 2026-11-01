@@ -1,5 +1,20 @@
 // Reads agent speech aloud. Uses a natural voice that runs in this browser once it has downloaded, and
 // the browser's own voice until then (or if the natural one cannot run here).
+// People can pick the quick built-in voice instead (it speaks at once but sounds more mechanical).
+const quick = () => {
+  try {
+    return localStorage.getItem("dispatch-voice") === "system";
+  } catch {
+    return false;
+  }
+};
+export const setQuickVoice = (on) => {
+  try {
+    localStorage.setItem("dispatch-voice", on ? "system" : "natural");
+  } catch {}
+};
+export const quickVoice = quick;
+
 let worker = null,
   state = "idle", // idle | loading | ready | failed
   ctx = null,
@@ -8,7 +23,7 @@ const waiting = new Map();
 let queue = Promise.resolve();
 
 function boot() {
-  if (worker || state === "failed") return;
+  if (worker || state === "failed" || quick()) return;
   state = "loading";
   worker = new Worker(new URL("./tts-worker.js", import.meta.url), { type: "module" });
   worker.onmessage = ({ data }) => {
@@ -57,12 +72,15 @@ function speakSystem(text, onStart) {
   });
 }
 
-async function speakNatural(text, onStart) {
-  const id = ++next,
-    got = await new Promise((resolve, reject) => {
-      waiting.set(id, { resolve, reject });
-      worker.postMessage({ type: "say", id, text });
-    }).finally(() => waiting.delete(id));
+// Ask the voice for a sentence now; resolves with the audio when it is made.
+function generate(text) {
+  const id = ++next;
+  return new Promise((resolve, reject) => {
+    waiting.set(id, { resolve, reject });
+    worker.postMessage({ type: "say", id, text });
+  }).finally(() => waiting.delete(id));
+}
+async function play(got, onStart) {
   ctx ||= new AudioContext();
   if (ctx.state === "suspended") await ctx.resume().catch(() => {});
   const buffer = ctx.createBuffer(1, got.audio.length, got.rate);
@@ -80,22 +98,35 @@ async function speakNatural(text, onStart) {
 // Start downloading the natural voice ahead of time, so the first thing an agent says already uses it.
 export const warm = () => boot();
 
+// Short pieces make sound sooner: a sentence, or the first part of a long one.
+function pieces(text) {
+  const out = [];
+  for (const s of text.match(/[^.!?]+[.!?]*/g)?.map((x) => x.trim()).filter(Boolean) || [text]) {
+    const words = s.split(/\s+/);
+    if (words.length > 14 && /,/.test(s)) {
+      const at = s.indexOf(",", 20);
+      if (at > 0 && at < s.length - 12) {
+        out.push(s.slice(0, at + 1), s.slice(at + 1).trim());
+        continue;
+      }
+    }
+    out.push(s);
+  }
+  return out;
+}
+
 // Say one line. Lines are read one after another.
 export function speak(text, { onStart, muted } = {}) {
   boot();
+  const parts = pieces(text);
+  // With the natural voice ready, every piece starts being made at once and plays as soon as it is done.
+  const made = state === "ready" && !quick() ? parts.map((p) => generate(p).catch(() => null)) : [];
   queue = queue.then(async () => {
-    if (muted?.()) return;
-    // Split into sentences so the first one can start while the rest are still being made.
-    const parts = text.match(/[^.!?]+[.!?]*/g)?.map((s) => s.trim()).filter(Boolean) || [text];
-    for (const part of parts) {
+    for (let i = 0; i < parts.length; i++) {
       if (muted?.()) return;
-      if (state === "ready") {
-        try {
-          await speakNatural(part, onStart);
-          continue;
-        } catch {}
-      }
-      await speakSystem(part, onStart);
+      const got = made[i] ? await made[i] : null;
+      if (got) await play(got, onStart);
+      else await speakSystem(parts[i], onStart);
     }
   });
   return queue;

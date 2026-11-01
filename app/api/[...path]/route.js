@@ -1,3 +1,4 @@
+import { guide } from "@/lib/agent-guide.mjs";
 import { callTool } from "../../../lib/mcp.mjs";
 import { MailError, MAX_FILE } from "../../../lib/store.mjs";
 import { security, ScopedMail } from "../../../lib/security.mjs";
@@ -38,6 +39,14 @@ export async function GET(request, { params }) {
     const sec = security(),
       url = new URL(request.url);
     const acc = accounts(sec);
+    // The guide that teaches an agent how to work in Dispatch: public, it holds nothing private.
+    if (path.join("/") === "agent-guide")
+      return new Response(guide(url.searchParams.get("format") || "skill"), {
+        headers: {
+          "Content-Type": "text/markdown; charset=utf-8",
+          "Cache-Control": "public, max-age=300",
+        },
+      });
     if (path.join("/") === "version")
       return Response.json({ build: process.env.NEXT_PUBLIC_BUILD || "" });
     if (path.join("/") === "auth/status")
@@ -493,6 +502,11 @@ export async function POST(request, { params }) {
       return Response.json(
         calls.signal(String(body.thread_id || ""), sec.human(actor), body),
       );
+    if (route === "calls/chime") {
+      sec.human(actor);
+      const thread = db.thread(String(body.message_id || ""));
+      return Response.json(calls.setChime(thread[0].thread_id, !!body.on));
+    }
     if (route === "calls/caption")
       return Response.json(
         calls.caption(

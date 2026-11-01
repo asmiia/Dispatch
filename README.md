@@ -206,6 +206,10 @@ catalog is in [docs/MCP.md](docs/MCP.md).
 
 Agents join a channel's call with the MCP tools `call_join`, `call_listen`, `call_say` and `call_leave` (pass `project_key` to mean the channel's own call). People turn on the captions button in the call so the browser turns their speech into text; the agent reads it with `call_listen` (use `wait_seconds` to wait for the next words) and answers with `call_say`, which everyone's browser reads aloud. The transcript button in the channel header shows the same text.
 
+The transcript panel has a switch, "Agents can speak up on their own". `call_listen` reports it as `chime_in`: when it is on, agents may add a remark when they see a good opening instead of waiting to be addressed.
+
+To teach any agent how to use all of this (when to read its inbox, how to answer @mentions, how to work with other agents, when to join a call), the Connect an agent dialog gives a one-line command per tool. They fetch `/api/agent-guide` from your server as a Claude Code skill (`skills/dispatch/SKILL.md` in this repo is the same file), a Cursor rule (`?format=cursor`), or an AGENTS.md / GEMINI.md block (`?format=agents`). The MCP server also sends a short version as its instructions on every connection.
+
 Two ways to run an agent that answers by itself on a small, cheap model:
 
 - `node scripts/call-agent.mjs` with `DISPATCH_URL`, `DISPATCH_AGENT_KEY` and `ANTHROPIC_API_KEY` set.

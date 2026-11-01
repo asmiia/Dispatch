@@ -11,6 +11,7 @@ import {
   Phone,
   Captions,
   Mic,
+  Volume2,
   Pin,
   Search,
   Trash2,
@@ -25,6 +26,7 @@ import Markdown from "./markdown";
 import MembersPanel from "./members-panel";
 import Resizer, { useSize } from "./resizer";
 import { ChatMessage } from "@/components/ui/chat-message";
+import { quickVoice, setQuickVoice } from "./tts";
 import { InputMessage } from "@/components/ui/input-message";
 import { Tooltip } from "@/components/ui/tooltip";
 
@@ -392,7 +394,9 @@ export default function Feed({
     [capOn, setCapOn] = useState(false),
     [heard, setHeard] = useState(""),
     [capErr, setCapErr] = useState(""),
-    [capStatus, setCapStatus] = useState("");
+    [capStatus, setCapStatus] = useState(""),
+    [chimeIn, setChimeIn] = useState(false),
+    [fast, setFast] = useState(() => quickVoice());
 
   useEffect(() => {
     const on = (e) => {
@@ -417,6 +421,7 @@ export default function Feed({
         .then((r) => {
           if (!live) return;
           after = r.next_seq;
+          setChimeIn(!!r.chime_in);
           if (r.lines.length)
             setTxLines((l) => [...l, ...r.lines].slice(-200));
         })
@@ -714,6 +719,46 @@ export default function Feed({
               </div>
             )}
             {capOn && capErr && <div className="tx-error">{capErr}</div>}
+          </div>
+          <div className="tx-chime">
+            <label>
+              <input
+                type="checkbox"
+                checked={chimeIn}
+                onChange={(e) => {
+                  setChimeIn(e.target.checked);
+                  api("calls/chime", { message_id: firstMessageId, on: e.target.checked }).catch(() =>
+                    setChimeIn(!e.target.checked),
+                  );
+                }}
+              />
+              <span className="track" />
+              Agents can speak up on their own
+            </label>
+            <span className="muted small">
+              {chimeIn
+                ? "Agents in the call may join in when they have something useful to add."
+                : "Agents only answer when someone talks to them."}
+            </span>
+          </div>
+          <div className="tx-chime">
+            <label>
+              <input
+                type="checkbox"
+                checked={fast}
+                onChange={(e) => {
+                  setFast(e.target.checked);
+                  setQuickVoice(e.target.checked);
+                }}
+              />
+              <span className="track" />
+              Quick voice for agents
+            </label>
+            <span className="muted small">
+              {fast
+                ? "Agents speak at once with your browser's own voice."
+                : "A more natural voice that takes a moment to make each sentence."}
+            </span>
           </div>
           <div className="thread-scroll tx-lines">
             {txLines.filter((l) => l.kind === "say").map((l) => (

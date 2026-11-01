@@ -4,6 +4,8 @@ import { StyleTextToSpeech2Model, AutoTokenizer, Tensor, env } from "@huggingfac
 import { phonemize } from "phonemizer";
 
 env.allowLocalModels = false;
+// Several threads when the page allows it (it is cross-origin isolated); one otherwise.
+env.backends.onnx.wasm.numThreads = self.crossOriginIsolated ? Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)) : 1;
 env.backends.onnx.wasm.wasmPaths = {
   mjs: "/ort/ort-wasm-simd-threaded.asyncify.mjs",
   wasm: "/ort/ort-wasm-simd-threaded.asyncify.wasm",
@@ -65,6 +67,15 @@ self.onmessage = async ({ data }) => {
           AutoTokenizer.from_pretrained(MODEL, { progress_callback }),
         ]);
         await voiceStyle("af_heart");
+        // One short run now, so the first real sentence is not the one that pays for warming up.
+        try {
+          const { input_ids } = tokenizer(await phonemes("Hello."), { truncation: true });
+          await model({
+            input_ids,
+            style: new Tensor("float32", (await voiceStyle("af_heart")).slice(256 * 4, 256 * 4 + 256), [1, 256]),
+            speed: new Tensor("float32", [1], [1]),
+          });
+        } catch {}
       }
       send({ type: "ready" });
     } else if (data.type === "say") {
