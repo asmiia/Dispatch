@@ -522,6 +522,46 @@ export default function Call({
 
   // Captions: this browser turns your speech into text for the transcript, so agents in the call can hear you.
   useEffect(() => {
+    const post = (text) => {
+      window.dispatchEvent(
+        new CustomEvent("dispatch:captions", {
+          detail: { on: true, heard: text, final: true },
+        }),
+      );
+      if (!text || live.current.muted) return;
+      setSaid({ id: Math.random(), name: "You", text });
+      setTimeout(
+        () => setSaid((c) => (c?.name === "You" && c.text === text ? null : c)),
+        3000 + text.length * 60,
+      );
+      api("calls/caption", {
+        thread_id: room.current.thread,
+        from: room.current.me,
+        text,
+      }).catch(() => {});
+    };
+    const fail = (error) =>
+      window.dispatchEvent(
+        new CustomEvent("dispatch:captions", { detail: { on: true, error } }),
+      );
+    // The desktop app listens with the system's recogniser; a browser uses its own.
+    const desk = window.dispatchDesktop?.stt;
+    if (listening && desk) {
+      const off = desk.onResult((m) => {
+        if (m.error)
+          fail(
+            m.error === "unsupported"
+              ? "Speech to text in the desktop app is only available on Windows. Use Dispatch in Chrome instead."
+              : "The speech recogniser stopped: " + m.error,
+          );
+        else if (m.text) post(m.text);
+      });
+      desk.start();
+      return () => {
+        off();
+        desk.stop();
+      };
+    }
     const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!listening || !Rec) return;
     const rec = new Rec();
@@ -556,8 +596,13 @@ export default function Call({
         } catch {}
     };
     rec.onerror = (e) => {
-      if (e.error === "not-allowed" || e.error === "service-not-allowed")
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+        fail("The microphone is blocked for speech recognition. Allow it and try again.");
         setListening(false);
+      } else if (e.error === "network")
+        fail("Your browser could not reach its speech service. Check your connection, or try Chrome.");
+      else if (e.error !== "no-speech" && e.error !== "aborted")
+        fail("Speech recognition error: " + e.error);
     };
     try {
       rec.start();
@@ -585,7 +630,7 @@ export default function Call({
   }, [listening]);
   const canListen =
     typeof window !== "undefined" &&
-    !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    !!(window.dispatchDesktop?.stt || window.SpeechRecognition || window.webkitSpeechRecognition);
 
   const measure = (key) => (el) =>
     setSizes((p) =>

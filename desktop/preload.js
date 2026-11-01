@@ -8,6 +8,16 @@ contextBridge.exposeInMainWorld("dispatchDesktop", {
   connect: (address) => ipcRenderer.invoke("connect", address),
   setTheme: (light) => ipcRenderer.send("theme", !!light),
   shareQuality: () => ipcRenderer.invoke("share-quality"),
+  stt: {
+    available: true,
+    start: () => ipcRenderer.send("stt-start"),
+    stop: () => ipcRenderer.send("stt-stop"),
+    onResult: (cb) => {
+      const h = (e, m) => cb(m);
+      ipcRenderer.on("stt", h);
+      return () => ipcRenderer.removeListener("stt", h);
+    },
+  },
   win: {
     act: (action) => ipcRenderer.send("win", action),
     maximized: () => ipcRenderer.invoke("win-maximized"),

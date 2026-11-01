@@ -390,11 +390,14 @@ export default function Feed({
     [tx, setTx] = useState(false), // transcript panel
     [txLines, setTxLines] = useState([]),
     [capOn, setCapOn] = useState(false),
-    [heard, setHeard] = useState("");
+    [heard, setHeard] = useState(""),
+    [capErr, setCapErr] = useState("");
 
   useEffect(() => {
     const on = (e) => {
       setCapOn(!!e.detail.on);
+      if (e.detail.error) setCapErr(e.detail.error);
+      else if (e.detail.heard !== undefined || !e.detail.on) setCapErr("");
       if (!e.detail.on) setHeard("");
       else if (e.detail.heard !== undefined)
         setHeard(e.detail.final ? "" : e.detail.heard);
@@ -708,6 +711,7 @@ export default function Feed({
                 <i /> {heard || "Listening…"}
               </div>
             )}
+            {capOn && capErr && <div className="tx-error">{capErr}</div>}
           </div>
           <div className="thread-scroll tx-lines">
             {txLines.filter((l) => l.kind === "say").map((l) => (

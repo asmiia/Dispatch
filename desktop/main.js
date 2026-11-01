@@ -335,6 +335,58 @@ ipcMain.on("theme", () => {});
 ipcMain.handle("share-quality", () => lastShare);
 ipcMain.handle("connect", (event, raw) => connectTo(raw));
 
+// Speech to text for call captions. The speech service the browser engine normally uses is not in this app, so
+// on Windows the system's own recogniser listens to the default microphone and sends each sentence to the page.
+let stt = null;
+function stopStt() {
+  try {
+    stt?.kill();
+  } catch {}
+  stt = null;
+}
+function startStt() {
+  if (stt) return;
+  if (process.platform !== "win32")
+    return win?.webContents.send("stt", { error: "unsupported" });
+  const script = [
+    "Add-Type -AssemblyName System.Speech",
+    "$e = New-Object System.Speech.Recognition.SpeechRecognitionEngine",
+    "$e.SetInputToDefaultAudioDevice()",
+    "$e.LoadGrammar((New-Object System.Speech.Recognition.DictationGrammar))",
+    "[Console]::Out.WriteLine('READY')",
+    "while ($true) { $r = $e.Recognize([TimeSpan]::FromSeconds(30)); if ($r -and $r.Text) { [Console]::Out.WriteLine('SAID:' + $r.Text) } }",
+  ].join("; ");
+  const child = require("node:child_process").spawn(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-Command", script],
+    { windowsHide: true },
+  );
+  stt = child;
+  let buffer = "";
+  child.stdout.on("data", (chunk) => {
+    buffer += chunk.toString();
+    let i;
+    while ((i = buffer.indexOf("\n")) >= 0) {
+      const line = buffer.slice(0, i).trim();
+      buffer = buffer.slice(i + 1);
+      if (line.startsWith("SAID:"))
+        win?.webContents.send("stt", { text: line.slice(5), final: true });
+      else if (line === "READY") win?.webContents.send("stt", { ready: true });
+    }
+  });
+  let err = "";
+  child.stderr.on("data", (d) => (err += d.toString()));
+  child.on("exit", () => {
+    if (stt === child) {
+      stt = null;
+      if (err.trim()) win?.webContents.send("stt", { error: err.trim().slice(0, 200) });
+    }
+  });
+}
+ipcMain.on("stt-start", startStt);
+ipcMain.on("stt-stop", stopStt);
+app.on("before-quit", stopStt);
+
 // On Windows a browser marks what it downloads with the page it came from. If you got this app from your own
 // Dispatch server, that mark names the server, so the first launch can offer to connect without typing anything.
 function downloadedFrom() {
