@@ -667,6 +667,7 @@ export default function Workspace() {
         if (document.hidden && !callRef.current) return void reloadForUpdate();
         told = true;
         toast({
+          kind: "plain",
           title: "Dispatch was updated",
           body: callRef.current ? "Reload when you leave the call." : "Reloading in a few seconds.",
           sticky: !!callRef.current,

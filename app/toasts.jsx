@@ -16,7 +16,7 @@ export default function Toasts({ list, onClose }) {
             onClose(t.id);
           }}
         >
-          {t.kind === "call" ? (
+          {t.kind === "plain" ? null : t.kind === "call" ? (
             <Phone size={18} />
           ) : (
             <MessageSquare size={18} />
