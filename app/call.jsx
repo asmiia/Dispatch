@@ -8,7 +8,13 @@ import {
   Hand,
   Headphones,
   HeadphoneOff,
+  ChevronDown,
   Maximize2,
+  Minimize2,
+  MoreHorizontal,
+  PictureInPicture2,
+  Volume2,
+  VolumeX,
   Mic,
   MicOff,
   Monitor,
@@ -82,12 +88,21 @@ export default function Call({
     [sharing, setSharing] = useState(null), // the stream being shared, if any
     [cam, setCam] = useState(null), // your camera stream, if on
     [hand, setHand] = useState(false),
-    [menu, setMenu] = useState(""), // "react" | "mic" | ""
+    [menu, setMenu] = useState(""), // "react" | "mic" | "out" | "src" | ""
     [speaking, setSpeaking] = useState({}),
     [meta, setMeta] = useState({}),
     [videos, setVideos] = useState({}), // stream id -> { peer, stream }
     [sizes, setSizes] = useState({}),
-    [solo, setSolo] = useState(false), // focused tile alone, without the strip of everyone else
+    [chatHidden, setChatHidden] = useState(false),
+    [streamOff, setStreamOff] = useState([]), // people whose shared screen you silenced
+    [fullNow, setFullNow] = useState(false),
+    [shareSrc, setShareSrc] = useState(() => {
+      try {
+        return localStorage.getItem("dispatch-share-src") || "default";
+      } catch {
+        return "default";
+      }
+    }),
     [focus, setFocus] = useState(null), // key of the focused tile, "none" for the grid, null for automatic
     [floating, setFloating] = useState([]),
     [mics, setMics] = useState([]),
@@ -108,7 +123,9 @@ export default function Call({
   // People you silenced for yourself (the others in the call still hear them).
   const [hushed, setHushed] = useState([]);
   const stageRef = useRef(null),
+    srcRef = useRef(shareSrc),
     sinkRef = useRef(sink);
+  srcRef.current = shareSrc;
   sinkRef.current = sink;
   useEffect(() => {
     for (const el of room.current.audio.values()) el.setSinkId?.(sink).catch(() => {});
@@ -476,14 +493,34 @@ export default function Call({
         : startVideo(
             "screen",
             () =>
-              navigator.mediaDevices.getDisplayMedia({
-                video: {
-                  frameRate: { ideal: 30, max: 60 },
-                  width: { ideal: 1920 },
-                  height: { ideal: 1080 },
-                },
-                audio: true,
-              }),
+              navigator.mediaDevices
+                .getDisplayMedia({
+                  video: {
+                    frameRate: { ideal: 30, max: 60 },
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                  },
+                  audio: srcRef.current === "default",
+                })
+                .then(async (s) => {
+                  // Sound from a device you chose (a virtual cable, Stereo Mix) instead of the default output.
+                  if (srcRef.current !== "default")
+                    try {
+                      const a = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                          deviceId: { exact: srcRef.current },
+                          echoCancellation: false,
+                          noiseSuppression: false,
+                          autoGainControl: false,
+                        },
+                      });
+                      s.addTrack(a.getAudioTracks()[0]);
+                    } catch {
+                      setError("That sound source could not be used. Pick another one next to the share button.");
+                      setTimeout(() => setError(""), 9000);
+                    }
+                  return s;
+                }),
             setSharing,
           );
     r.toggleCam = () =>
@@ -671,9 +708,36 @@ export default function Call({
                   {bounds(p.id + "s") && <b>{bounds(p.id + "s")}</b>}
                   <i>LIVE</i>
                 </span>
-                <span className="call-name">
+                <span className="call-name hover-only">
                   <Monitor size={13} />
                   {mine ? "You are sharing your screen" : `${p.name}'s screen`}
+                </span>
+                <span className="tile-actions">
+                  <button
+                    aria-label="More"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.currentTarget.closest(".call-tile").dispatchEvent(
+                        new MouseEvent("contextmenu", { bubbles: true, clientX: e.clientX, clientY: e.clientY }),
+                      );
+                    }}
+                  >
+                    <MoreHorizontal size={16} />
+                  </button>
+                  {!mine && (
+                    <button
+                      aria-label={streamOff.includes(p.id) ? "Turn the stream sound on" : "Turn the stream sound off"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const off = !streamOff.includes(p.id),
+                          id = meta[p.id]?.screen;
+                        for (const [key, el] of room.current.audio) if (key === p.id + ":" + id) el.volume = off ? 0 : 1;
+                        setStreamOff((l) => (off ? [...l, p.id] : l.filter((x) => x !== p.id)));
+                      }}
+                    >
+                      {streamOff.includes(p.id) ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                    </button>
+                  )}
                 </span>
                 <button
                   className="tile-full"
@@ -764,6 +828,11 @@ export default function Call({
       document.removeEventListener("fullscreenchange", size);
     };
   }, [count, !!focusKey]);
+  useEffect(() => {
+    const on = () => setFullNow(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", on);
+    return () => document.removeEventListener("fullscreenchange", on);
+  }, []);
   const toggleFull = () =>
     document.fullscreenElement
       ? document.exitFullscreen()
@@ -780,13 +849,9 @@ export default function Call({
         label: focused ? "Show everyone" : screenTile ? "Watch this screen" : "Focus",
         icon: <Maximize2 size={14} />,
         onClick: () => {
-          setSolo(false);
           setFocus(focused ? "none" : el.key);
         },
       },
-      ...(focused && !solo && all.length > 1
-        ? [{ label: "Hide the others", icon: <Maximize2 size={14} />, onClick: () => setSolo(true) }]
-        : []),
       {
         label: "Full screen",
         icon: <Maximize2 size={14} />,
@@ -834,13 +899,7 @@ export default function Call({
     cloneElement(el, {
       onClick: () => {
         // Clicking focuses that tile on its own; click it again to go back to everyone.
-        if (el.key === focusKey) {
-          setFocus("none");
-          setSolo(false);
-        } else {
-          setFocus(el.key);
-          setSolo(true);
-        }
+        setFocus(el.key === focusKey ? "none" : el.key);
       },
       onContextMenu: tileMenu(el),
       "data-tile": el.key,
@@ -852,15 +911,10 @@ export default function Call({
       <div className="call-focus-wrap">
         <div className="call-focus">
           {pick(all.find((e) => e.key === focusKey))}
-          <button className="strip-toggle" onClick={() => setSolo(!solo)}>
-            {solo ? `Show others (${all.length - 1})` : "Hide others"}
-          </button>
         </div>
-        {!solo && (
-          <div className="call-strip">
-            {all.filter((e) => e.key !== focusKey).map(pick)}
-          </div>
-        )}
+        <div className="call-strip">
+          {all.filter((e) => e.key !== focusKey).map(pick)}
+        </div>
       </div>
     ) : (
       <div className="call-grid" ref={gridRef} style={{ "--tw": (tw || 320) + "px" }}>
@@ -877,6 +931,43 @@ export default function Call({
       )}
       {error && <div className="call-error">{error}</div>}
       <div className="call-dock">
+        <button
+          className="dock-side left"
+          title={chatHidden ? "Show the chat" : "Hide the chat"}
+          aria-label={chatHidden ? "Show the chat" : "Hide the chat"}
+          onClick={() => {
+            const next = !chatHidden;
+            setChatHidden(next);
+            stageRef.current?.closest(".feed-main")?.classList.toggle("call-only", next);
+          }}
+        >
+          <ChevronDown size={18} style={{ transform: chatHidden ? "rotate(180deg)" : "none" }} />
+        </button>
+        <div className="dock-side right">
+          {document.pictureInPictureEnabled && (
+            <button
+              title="Pop the stream out"
+              aria-label="Pop the stream out"
+              onClick={() => {
+                const v =
+                  stageRef.current?.querySelector(".focused video") ||
+                  stageRef.current?.querySelector(".screen-tile video") ||
+                  stageRef.current?.querySelector("video");
+                if (document.pictureInPictureElement) document.exitPictureInPicture();
+                else v?.requestPictureInPicture?.().catch(() => {});
+              }}
+            >
+              <PictureInPicture2 size={18} />
+            </button>
+          )}
+          <button
+            title={fullNow ? "Leave full screen" : "Full screen"}
+            aria-label={fullNow ? "Leave full screen" : "Full screen"}
+            onClick={() => toggleFull()}
+          >
+            {fullNow ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+          </button>
+        </div>
         <div className="call-bar">
           <div className="call-group">
             <button
@@ -975,6 +1066,38 @@ export default function Call({
             >
               {sharing ? <MonitorOff size={20} /> : <MonitorUp size={20} />}
             </button>
+            {mics.length > 1 && (
+              <div className="call-react">
+                <button
+                  className="call-caret"
+                  title="Choose the sound that is shared with your screen"
+                  aria-label="Choose the sound that is shared with your screen"
+                  onClick={() => setMenu(menu === "src" ? "" : "src")}
+                >
+                  <ChevronUp size={14} />
+                </button>
+                {menu === "src" && (
+                  <div className="call-picker list">
+                    <span className="picker-title">Sound shared with your screen</span>
+                    {[{ deviceId: "default", label: "Everything this computer plays (default output)" }, ...mics].map((d, i) => (
+                      <button
+                        key={d.deviceId}
+                        onClick={() => {
+                          setShareSrc(d.deviceId);
+                          try {
+                            localStorage.setItem("dispatch-share-src", d.deviceId);
+                          } catch {}
+                          setMenu("");
+                        }}
+                      >
+                        {shareSrc === d.deviceId ? "✓ " : ""}
+                        {d.label || `Input ${i}`}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {canListen && (
               <button
                 className={"call-btn" + (listening ? " on" : "")}
