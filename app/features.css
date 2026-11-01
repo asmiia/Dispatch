@@ -1247,3 +1247,7 @@ html[data-desktop] .titlebar { padding-right: 0 !important; }
 .call-preview.big .join-btn.video { color: #fff !important; border: 0 !important; background: rgba(255,255,255,.08) !important; }
 .call-preview.big .join-btn.video:hover { background: rgba(255,255,255,.16) !important; }
 .call-tile.has-pic::before, .cp-tile.has-pic::before { filter: blur(46px) saturate(1.4) brightness(.42) !important; }
+
+/* a separator that shows on dark backgrounds */
+.call-preview.big { border: 1px solid rgba(255,255,255,.16) !important; }
+.call-slot { border-bottom: 1px solid rgba(255,255,255,.16); }
