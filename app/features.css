@@ -1058,10 +1058,10 @@ html[data-desktop] .titlebar { padding-right: 0 !important; }
 /* call tiles: a soft multi-colour glow instead of a flat tint */
 .call-tile {
   background:
-    radial-gradient(120% 90% at 12% 8%, hsl(var(--h, 220) 70% 40% / .75), transparent 62%),
-    radial-gradient(110% 95% at 92% 96%, hsl(calc(var(--h, 220) + 60) 65% 34% / .75), transparent 62%),
-    radial-gradient(70% 60% at 78% 18%, hsl(calc(var(--h, 220) + 130) 55% 32% / .45), transparent 70%),
-    hsl(var(--h, 220) 30% 11%) !important;
+    radial-gradient(120% 90% at 12% 8%, hsl(var(--c1, var(--h, 220) 70%) 40% / .75), transparent 62%),
+    radial-gradient(110% 95% at 92% 96%, hsl(var(--c2, calc(var(--h, 220) + 60) 65%) 34% / .75), transparent 62%),
+    radial-gradient(70% 60% at 78% 18%, hsl(var(--c3, calc(var(--h, 220) + 130) 55%) 32% / .45), transparent 70%),
+    hsl(var(--ch, var(--h, 220)) 30% 11%) !important;
 }
 .call-tile::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), inset 0 -60px 80px rgba(0,0,0,.35); }
 .call-tile video { position: relative; z-index: 1; }
@@ -1180,5 +1180,32 @@ html[data-desktop] .titlebar { padding-right: 0 !important; }
 
 .call-name.hover-only { z-index: 3; left: 12px !important; bottom: 12px !important; padding: 10px 16px !important; gap: 10px !important; font-size: 18px !important; font-weight: 600; border-radius: 14px !important; background: rgba(15,15,15,.85) !important; }
 
-.plugins-empty { margin-top: 28px; display: grid; justify-items: center; gap: 8px; padding: 56px 20px; border: 1px dashed var(--fl-border, #262626); border-radius: 16px; color: var(--fl-muted, #8a8a8a); text-align: center; }
+.plugins-empty { margin-top: 28px; display: grid; justify-items: center; gap: 8px; padding: 56px 20px; border: 1px dashed var(--fl-border, #262626); border-radius: 16px; color: color-mix(in srgb, currentColor 62%, transparent); text-align: center; }
 .plugins-empty strong { color: inherit; font-size: 15px; }
+
+/* toasts in the new style: a soft card like the dialogs, no hard borders */
+.toasts { right: 18px !important; bottom: 18px !important; gap: 10px !important; width: min(380px, calc(100vw - 32px)) !important; }
+.toast { align-items: center !important; gap: 12px !important; padding: 12px 14px !important; border: 1px solid var(--fl-border, #262626) !important; border-radius: 18px !important; background: var(--surface-2, #1e1e1e) !important; box-shadow: 0 18px 48px rgba(0,0,0,.4) !important; font-family: "Inter Variable", system-ui, sans-serif; }
+.toast > svg { flex: none; width: 36px; height: 36px; padding: 9px; border-radius: 12px; background: var(--surface-4, #2a2a2a); color: var(--fl-fg, #fff); box-sizing: border-box; }
+.toast.kind-call > svg { background: #1f6b3a; color: #fff; }
+.toast.kind-call { background: var(--surface-2, #1e1e1e) !important; border-color: var(--fl-border, #262626) !important; }
+.toast-body strong { font-size: 14px; font-weight: 600; color: var(--fl-fg, #fff); }
+.toast-body span { font-size: 13px; color: color-mix(in srgb, currentColor 62%, transparent); }
+.toast-actions button { height: 32px !important; border-radius: 10px !important; font-weight: 600; }
+.toast-x { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 9px; align-self: flex-start; }
+.toast-x:hover { background: var(--surface-4, #2a2a2a); }
+
+/* ringing: a calm centered dialog */
+.ring-backdrop { display: grid; place-items: center; z-index: 400; }
+.ring-modal { width: min(340px, calc(100vw - 32px)); display: grid; justify-items: center; gap: 6px; padding: 28px 24px 22px !important; text-align: center; animation: toast-in .2s ease-out; }
+.ring-faces { display: flex; margin-bottom: 8px; }
+.ring-faces .u-avatar { border-radius: 22px; border: 3px solid var(--surface-2, #1e1e1e); margin-left: -14px; }
+.ring-faces .u-avatar:first-child { margin-left: 0; }
+.ring-kind { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: color-mix(in srgb, currentColor 62%, transparent); }
+.ring-modal strong { font-size: 18px; }
+.ring-modal small { color: color-mix(in srgb, currentColor 62%, transparent); font-size: 13px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ring-actions { display: flex; gap: 10px; margin-top: 16px; width: 100%; }
+.ring-actions button { flex: 1; height: 42px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 14px; font-weight: 600; font-size: 14px; cursor: pointer; color: #fff; }
+.ring-decline { background: #c0433a; }
+.ring-join { background: #2b9a53; }
+.ring-actions button:hover { filter: brightness(1.1); }

@@ -1,5 +1,5 @@
 "use client";
-import { Copy, Download, FileText, Search, UserRound } from "lucide-react";
+import { Copy, Download, FileText, Phone, Search, UserRound } from "lucide-react";
 import AgentAvatar, { photoOf } from "./agent-avatar";
 import Fluid from "./fluid";
 
@@ -19,6 +19,7 @@ export default function MembersPanel({
   shown,
   onProfile,
   onMenu,
+  onRing,
   width,
   find,
   onFind,
@@ -68,6 +69,9 @@ export default function MembersPanel({
               }
               onContextMenu={(e) =>
                 onMenu(e, [
+                  ...(onRing && person && person.name !== me
+                    ? [{ label: "Ring", icon: <Phone size={14} />, onClick: () => onRing(person.a.owner_id) }]
+                    : []),
                   {
                     label: "View profile",
                     icon: <UserRound size={14} />,

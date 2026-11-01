@@ -504,6 +504,8 @@ export async function POST(request, { params }) {
         thread = db.thread(String(body.message_id || ""));
       return Response.json(calls.join(thread[0].thread_id, user));
     }
+    if (route === "calls/ring")
+      return Response.json(calls.ring(sec.human(actor), body.uid));
     if (route === "calls/signal")
       return Response.json(
         calls.signal(String(body.thread_id || ""), sec.human(actor), body),

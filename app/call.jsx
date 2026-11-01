@@ -31,8 +31,11 @@ import { listen } from "./stt";
 import { appAudioTrack } from "./app-audio";
 import { speak, warm, setOutput } from "./tts";
 import AgentAvatar from "./agent-avatar";
+import { avatarTint } from "./avatar-tint";
 import { hueFor } from "./gradient";
 
+const tintVars = (c) =>
+  c ? { "--ch": c[0][0], "--c1": `${c[0][0]} ${c[0][1]}%`, "--c2": `${c[1][0]} ${c[1][1]}%`, "--c3": `${c[2][0]} ${c[2][1]}%` } : {};
 const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 // How a shared screen is captured and sent. Each viewer receives its own copy, so higher means more upload.
 const QUALITY = {
@@ -99,6 +102,7 @@ export default function Call({
     [speaking, setSpeaking] = useState({}),
     [meta, setMeta] = useState({}),
     metaRef = useRef({}),
+    [tints, setTints] = useState({}),
     [videos, setVideos] = useState({}), // stream id -> { peer, stream }
     [sizes, setSizes] = useState({}),
     [chatHidden, setChatHidden] = useState(false),
@@ -732,6 +736,15 @@ export default function Call({
     setSizes((p) =>
       p[key] === el.videoHeight ? p : { ...p, [key]: el.videoHeight },
     );
+  // Each tile's background takes its colors from that person's picture.
+  useEffect(() => {
+    for (const p of peers) {
+      if (!p.avatar_v || p.agent) continue;
+      const key = p.uid + ":" + p.avatar_v;
+      if (tints[key] !== undefined) continue;
+      avatarTint(`/api/avatars/${p.uid}?v=${p.avatar_v}`).then((c) => setTints((t) => ({ ...t, [key]: c })));
+    }
+  }, [peers]);
   const tiles = [...peers].sort((a, b) => (b.uid === myId) - (a.uid === myId)),
     mineId = room.current.me,
     // A person's tiles: a shared screen (wide, first) and their camera or avatar.
@@ -818,6 +831,7 @@ export default function Call({
               style={{
                 "--tint": `hsl(${hueFor(p.name)} 38% 20%)`,
                 "--h": hueFor(p.name),
+                ...tintVars(tints[p.uid + ":" + p.avatar_v]),
               }}
             >
               {p.agent ? (

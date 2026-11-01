@@ -50,6 +50,7 @@ import Toasts from "./toasts";
 import Call from "./call";
 import Fluid from "./fluid";
 import Feed from "./feed";
+import RingModal from "./ring-modal";
 import { PluginsList, PluginsPage } from "./plugins";
 import Spaces, { NavRail, MeCard, QuickLinks } from "./spaces";
 import { TeamList, TeamPage } from "./team";
@@ -263,10 +264,13 @@ export default function Workspace() {
   useEffect(() => {
     refreshProjects();
   }, [refreshProjects]);
+  const latest = useRef(0);
   const refresh = useCallback(async () => {
+    const turn = ++latest.current;
     if (!project) {
       setAgents([]);
       setMessages([]);
+      api("projects").then((list) => turn === latest.current && setProjects(list)).catch(() => {});
       return;
     }
     try {
@@ -281,6 +285,8 @@ export default function Workspace() {
         api("projects"),
         api("starred?project=" + project),
       ]);
+      // A slower answer for a channel you have already left must not replace the one you are looking at.
+      if (turn !== latest.current) return;
       setStarred(new Set(stars.threads));
       setProjects(list);
       setAgents(people);
@@ -509,7 +515,9 @@ export default function Workspace() {
   }, [authenticated, user?.id]);
   const dismissedCalls = useRef(new Set()),
     announced = useRef(new Set()),
-    stopRing = useRef(null);
+    stopRing = useRef(null),
+    ringTimer = useRef(null),
+    [ringModal, setRingModal] = useState(null);
   useEffect(() => {
     const mineIn = (c) => c.people.some((p) => p.uid === user?.id),
       incoming = liveCalls.filter(
@@ -524,21 +532,42 @@ export default function Workspace() {
         announced.current.delete(id);
         dismissedCalls.current.delete(id);
       }
+    // A page only rings for a call that has just started or when someone rings you on purpose, and only once
+    // per call or ring, even across a reload.
+    const rung = (() => {
+        try {
+          return new Set(JSON.parse(sessionStorage.getItem("dispatch-rung") || "[]"));
+        } catch {
+          return new Set();
+        }
+      })(),
+      remember = (key) => {
+        rung.add(key);
+        try {
+          sessionStorage.setItem("dispatch-rung", JSON.stringify([...rung].slice(-40)));
+        } catch {}
+      };
+    let ringFor = null;
     for (const c of incoming) {
+      const join = () => {
+        dismissedCalls.current.add(c.thread_id);
+        setRingModal(null);
+        setFolder("inbox");
+        setCall({ messageId: c.message_id, threadId: c.thread_id, withVideo: false });
+        openThread(c.thread_id);
+      };
+      const names = c.people.map((p) => p.name).join(", "),
+        on = c.ringing?.find((r) => r.uid === user?.id),
+        key = on ? `${c.thread_id}:ring:${on.at}` : `${c.thread_id}:${c.started_at}`,
+        fresh = on || Date.now() - c.started_at < 30000;
+      if (fresh && !rung.has(key)) {
+        remember(key);
+        ringFor = { ...c, names, join, key };
+        alert(on ? "Calling you" : "Incoming call", `${names} in ${c.subject}`);
+      }
       if (announced.current.has(c.thread_id)) continue;
       announced.current.add(c.thread_id);
-      const names = c.people.map((p) => p.name).join(", "),
-        join = () => {
-          dismissedCalls.current.add(c.thread_id);
-          setFolder("inbox");
-          setCall({
-            messageId: c.message_id,
-            threadId: c.thread_id,
-            withVideo: false,
-          });
-          openThread(c.thread_id);
-        };
-      alert("Incoming call", `${names} in ${c.subject}`);
+      if (fresh) continue;
       toast({
         kind: "call",
         sticky: true,
@@ -557,12 +586,23 @@ export default function Workspace() {
         ],
       });
     }
-    // Ring while any call is waiting for you; stop as soon as you join, dismiss or it ends.
-    if (incoming.length && !stopRing.current) stopRing.current = ring();
+    if (ringFor) {
+      stopRing.current?.();
+      stopRing.current = ring();
+      setRingModal(ringFor);
+      clearTimeout(ringTimer.current);
+      ringTimer.current = setTimeout(() => {
+        stopRing.current?.();
+        stopRing.current = null;
+        setRingModal(null);
+      }, 30000);
+    }
+    // Stop ringing as soon as you join, decline or the call ends.
     if (!incoming.length && stopRing.current) {
       stopRing.current();
       stopRing.current = null;
     }
+    if (!incoming.length) setRingModal(null);
     setToasts((l) =>
       l.filter(
         (t) =>
@@ -1536,6 +1576,17 @@ export default function Workspace() {
           onProfile={openProfile}
         />
       )}
+      <RingModal
+        call={ringModal}
+        onJoin={() => (stopRing.current?.(), (stopRing.current = null), ringModal?.join())}
+        onDecline={() => {
+          dismissedCalls.current.add(ringModal.thread_id);
+          stopRing.current?.();
+          stopRing.current = null;
+          setRingModal(null);
+          setLiveCalls((l) => [...l]);
+        }}
+      />
       <Toasts list={toasts} onClose={closeToast} />
       {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
       {modal === "settings" && (

@@ -814,6 +814,7 @@ export default function Feed({
             shown={shown}
             onProfile={onProfile}
             onMenu={onMenu}
+            onRing={callActive ? (uid) => api("calls/ring", { uid }).catch(() => {}) : null}
             width={sideW}
             find={find}
             onFind={setFind}
