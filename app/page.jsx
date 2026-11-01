@@ -558,6 +558,8 @@ export default function Workspace() {
     mineUnread = (m) =>
       m.recipients.some((r) => r.name === agent && !r.read_at),
     others = (t) => [...(people.get(t) || [])].filter((n) => n !== agent),
+    // Conversations with the same people are one chat, however many threads they started.
+    gk = (t) => [...(people.get(t) || [])].sort().join("|"),
     sideThreads = allThreads
       .filter((t) => !channelThreads.has(t))
       .sort(
@@ -566,7 +568,7 @@ export default function Workspace() {
           Date.parse(lastOf.get(a).created_at),
       ),
     threadUnread = (t) =>
-      messages.some((m) => m.thread_id === t && mineUnread(m)),
+      messages.some((m) => gk(m.thread_id) === gk(t) && mineUnread(m)),
     entry = (t, group) => {
       const o = others(t),
         first = agentOf(o[0]);
@@ -574,7 +576,9 @@ export default function Workspace() {
         key: t,
         label: o.length ? o.map(who).join(", ") : who(agent),
         status: threadUnread(t) ? "unread" : "idle",
-        selected: view.kind === "thread" && view.id === t,
+        selected:
+          view.kind === "thread" &&
+          (view.set ? view.set === gk(t) : view.id === t),
         lead: group ? (
           <Users size={16} />
         ) : (
@@ -590,14 +594,8 @@ export default function Workspace() {
     },
     asEntry = (t, group) => ({
       ...entry(t, group),
-      open: () => setView({ kind: "thread", id: t }),
-    }),
-    dmEntries = sideThreads
-      .filter((t) => others(t).length < 2)
-      .map((t) => entry(t, false)),
-    groupEntries = sideThreads
-      .filter((t) => others(t).length >= 2)
-      .map((t) => entry(t, true));
+      open: () => setView({ kind: "thread", id: t, set: gk(t) }),
+    });
   const pinnedEntries = allThreads
       .filter((t) => starred.has(t))
       .map((t) =>
@@ -613,13 +611,17 @@ export default function Workspace() {
       ),
     recentEntries = sideThreads
       .filter((t) => !starred.has(t))
+      // sideThreads is newest first, so the first thread of each set stands for the chat.
+      .filter((t, i, all) => all.findIndex((x) => gk(x) === gk(t)) === i)
       .map((t) => asEntry(t, others(t).length >= 2));
   const readOnly = ["unread", "pinned", "files"].includes(view.kind),
     scopeMsgs =
       view.kind === "channel"
         ? chrono
         : view.kind === "thread"
-          ? chrono.filter((m) => m.thread_id === view.id)
+          ? view.set
+            ? chrono.filter((m) => gk(m.thread_id) === view.set)
+            : chrono.filter((m) => m.thread_id === view.id)
           : view.kind === "unread"
             ? chrono.filter(mineUnread)
             : view.kind === "pinned"
@@ -638,7 +640,7 @@ export default function Workspace() {
           : view.kind === "thread"
             ? "thread"
             : "list",
-      key: view.kind + (view.id || "") + project,
+      key: view.kind + (view.set || view.id || "") + project,
       title:
         view.kind === "channel"
           ? current?.name || "channel"
@@ -692,7 +694,18 @@ export default function Workspace() {
         ).id,
       );
     }
-    const tid = reply?.thread_id || (view.kind === "thread" ? view.id : null),
+    // A chat with several threads: new messages continue the newest one.
+    const newest =
+        view.kind === "thread" && view.set
+          ? allThreads
+              .filter((t) => gk(t) === view.set)
+              .sort(
+                (a, b) =>
+                  Date.parse(lastOf.get(b).created_at) -
+                  Date.parse(lastOf.get(a).created_at),
+              )[0]
+          : view.id,
+      tid = reply?.thread_id || (view.kind === "thread" ? newest : null),
       base = tid
         ? others(tid)
         : agents.map((a) => a.name).filter((n) => n !== agent),
@@ -963,7 +976,11 @@ export default function Workspace() {
   function openThread(tid) {
     setMenu(null);
     setSection("chats");
-    setView(channelThreads.has(tid) ? { kind: "channel" } : { kind: "thread", id: tid });
+    setView(
+      channelThreads.has(tid)
+        ? { kind: "channel" }
+        : { kind: "thread", id: tid, set: gk(tid) },
+    );
   }
   const openMessage = (m) => openThread(m.thread_id);
   async function quickReply(reply, body_md) {

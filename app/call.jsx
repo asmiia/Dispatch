@@ -92,8 +92,9 @@ export default function Call({
     muted,
     deaf,
     hand,
-    screen: sharing?.id || null,
-    camera: cam?.id || null,
+    // Everyone else watches one stream per kind that never changes, so sharing again just fills it again.
+    screen: sharing ? room.current.out?.screen?.id || null : null,
+    camera: cam ? room.current.out?.cam?.id || null : null,
   };
   // Tell everyone else what your state is over the data channels, and keep your own tracks in step.
   const broadcast = (message) => {
@@ -163,6 +164,26 @@ export default function Call({
         return n;
       });
 
+    // One sender per kind and connection, kept for the whole call. Sharing again swaps a track in and out of
+    // it, so the other side keeps the same stream and never misses a restart.
+    const outStream = (kind) => ((r.out ||= {})[kind] ||= new MediaStream());
+    const lane = (e, key, track, kind) => {
+      let s = e.senders[key];
+      if (!s && !track) return null;
+      if (!s)
+        s = e.senders[key] = e.pc.addTransceiver(
+          key.endsWith("Audio") ? "audio" : "video",
+          { direction: "sendrecv", streams: [outStream(kind)] },
+        ).sender;
+      s.replaceTrack(track || null).catch(() => {});
+      return s;
+    };
+    const attach = (e, kind, capture) => {
+      const video = lane(e, kind, capture.getVideoTracks()[0], kind);
+      if (video) tune(video, kind === "screen" ? 8e6 : 2.5e6);
+      // System audio from a shared screen travels with it.
+      lane(e, kind + "Audio", capture.getAudioTracks()[0], kind);
+    };
     function connection(id) {
       if (r.pcs.has(id)) return r.pcs.get(id);
       const pc = new RTCPeerConnection({ iceServers: ice }),
@@ -178,15 +199,7 @@ export default function Call({
       r.pcs.set(id, entry);
       r.stream.getTracks().forEach((t) => pc.addTrack(t, r.stream));
       for (const kind of ["screen", "cam"])
-        if (r[kind]) {
-          entry.senders[kind] = pc.addTrack(
-            r[kind].getVideoTracks()[0],
-            r[kind],
-          );
-          const audio = r[kind].getAudioTracks()[0];
-          if (audio)
-            entry.senders[kind + "Audio"] = pc.addTrack(audio, r[kind]);
-        }
+        if (r[kind]) attach(entry, kind, r[kind]);
       // A small channel for state, reactions and the like. Both sides open the same one.
       entry.dc = pc.createDataChannel("meta", { negotiated: true, id: 0 });
       entry.dc.onopen = () =>
@@ -216,9 +229,7 @@ export default function Call({
           const stream = e.streams[0] || new MediaStream([e.track]);
           entry.streams.add(stream.id);
           addVideo(id, stream);
-          e.track.onmute = () => removeVideo(stream.id);
           e.track.onended = () => removeVideo(stream.id);
-          e.track.onunmute = () => addVideo(id, stream);
           return;
         }
         const key = id + ":" + e.streams[0].id;
@@ -366,13 +377,8 @@ export default function Call({
                 }),
             )
             .catch(() => {});
-        for (const e of r.pcs.values()) {
-          e.senders[kind] = e.pc.addTrack(track, s);
-          tune(e.senders[kind], kind === "screen" ? 8e6 : 2.5e6);
-          // System audio from a shared screen travels with it.
-          const audio = s.getAudioTracks()[0];
-          if (audio) e.senders[kind + "Audio"] = e.pc.addTrack(audio, s);
-        }
+        outStream(kind);
+        for (const e of r.pcs.values()) attach(e, kind, s);
         setter(s);
       } catch (err) {
         if (
@@ -392,12 +398,7 @@ export default function Call({
       r[kind].getTracks().forEach((t) => t.stop());
       for (const e of r.pcs.values())
         for (const key of [kind, kind + "Audio"])
-          if (e.senders[key]) {
-            try {
-              e.pc.removeTrack(e.senders[key]);
-            } catch {}
-            e.senders[key] = null;
-          }
+          e.senders[key]?.replaceTrack(null).catch(() => {});
       r[kind] = null;
       setter(null);
     };
@@ -608,6 +609,7 @@ export default function Call({
               className={"call-tile" + (talking ? " speaking" : "")}
               style={{
                 "--tint": `hsl(${hueFor(p.name)} 38% 20%)`,
+                "--h": hueFor(p.name),
               }}
             >
               {p.agent ? (
@@ -650,10 +652,6 @@ export default function Call({
       )}
       {error && <div className="call-error">{error}</div>}
       <div className="call-dock">
-        <span className="call-time">
-          <i /> {status}
-          {status === "Voice connected" ? ` · ${clock(secs)}` : ""}
-        </span>
         <div className="call-bar">
           <div className="call-group">
             <button
