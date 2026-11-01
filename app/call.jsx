@@ -16,6 +16,7 @@ import {
   MonitorUp,
   PhoneOff,
   Smile,
+  Users,
   Video,
   VideoOff,
 } from "lucide-react";
@@ -57,6 +58,8 @@ export default function Call({
   onReturn,
   onLeave,
   agentOf,
+  onMenu,
+  onProfile,
 }) {
   // The call itself is mounted once for the whole app, so moving between conversations does not end it.
   // It draws its large view inside the conversation it belongs to, and a small control strip in the
@@ -84,6 +87,7 @@ export default function Call({
     [meta, setMeta] = useState({}),
     [videos, setVideos] = useState({}), // stream id -> { peer, stream }
     [sizes, setSizes] = useState({}),
+    [solo, setSolo] = useState(false), // focused tile alone, without the strip of everyone else
     [focus, setFocus] = useState(null), // key of the focused tile, "none" for the grid, null for automatic
     [floating, setFloating] = useState([]),
     [mics, setMics] = useState([]),
@@ -91,8 +95,11 @@ export default function Call({
     [said, setSaid] = useState(null), // the agent line being read out, shown as a caption
     [listening, setListening] = useState(false), // your speech goes to the transcript for agents
     live = useRef({}),
-    room = useRef({ pcs: new Map(), audio: new Map() });
+    room = useRef({ pcs: new Map(), audio: new Map(), local: new Set() });
 
+  // People you silenced for yourself (the others in the call still hear them).
+  const [hushed, setHushed] = useState([]);
+  const mutedFor = (key) => room.current.local?.has(key.split(":")[0]);
   const state = {
     muted,
     deaf,
@@ -109,9 +116,9 @@ export default function Call({
   useEffect(() => {
     live.current = state;
     room.current.stream?.getAudioTracks().forEach((t) => (t.enabled = !muted));
-    for (const el of room.current.audio.values()) el.muted = deaf;
+    for (const [key, el] of room.current.audio) el.muted = deaf || mutedFor(key);
     broadcast({ t: "state", s: state });
-  }, [muted, deaf, hand, sharing, cam]);
+  }, [muted, deaf, hand, sharing, cam, hushed]);
 
   const pop = (peer, emoji) => {
     const id = Math.random().toString(36).slice(2);
@@ -250,7 +257,7 @@ export default function Call({
           r.audio.set(key, el);
         }
         el.srcObject = e.streams[0];
-        el.muted = live.current.deaf;
+        el.muted = live.current.deaf || r.local.has(id);
         el.play().catch(() => {});
         watch(key, e.streams[0]);
       };
@@ -429,7 +436,7 @@ export default function Call({
                   width: { ideal: 1920 },
                   height: { ideal: 1080 },
                 },
-                audio: !!window.dispatchDesktop,
+                audio: true,
               }),
             setSharing,
           );
@@ -686,19 +693,84 @@ export default function Call({
         : focus && all.some((e) => e.key === focus)
           ? focus
           : screenTile?.key || null;
+  const personOf = (el) => tiles.find((p) => String(el.key).startsWith(p.id));
+  const tileMenu = (el) => (e) => {
+    const p = personOf(el),
+      screenTile = String(el.key).endsWith("-screen"),
+      mine = p?.id === mineId,
+      focused = el.key === focusKey,
+      hushedNow = room.current.local.has(p?.id);
+    onMenu?.(e, [
+      {
+        label: focused ? "Show everyone" : screenTile ? "Watch this screen" : "Focus",
+        icon: <Maximize2 size={14} />,
+        onClick: () => {
+          setSolo(false);
+          setFocus(focused ? "none" : el.key);
+        },
+      },
+      ...(focused && !solo && all.length > 1
+        ? [{ label: "Hide the others", icon: <Maximize2 size={14} />, onClick: () => setSolo(true) }]
+        : []),
+      {
+        label: "Full screen",
+        icon: <Maximize2 size={14} />,
+        onClick: () => document.querySelector(`[data-tile="${el.key}"]`)?.requestFullscreen?.(),
+      },
+      ...(screenTile && mine
+        ? [{ label: "Stop sharing", icon: <MonitorOff size={14} />, onClick: () => room.current.toggleShare() }]
+        : []),
+      ...(p && !mine && !p.agent && !screenTile
+        ? [
+            "-",
+            {
+              label: hushedNow ? "Unmute for me" : "Mute for me",
+              icon: hushedNow ? <Mic size={14} /> : <MicOff size={14} />,
+              onClick: () => {
+                hushedNow ? room.current.local.delete(p.id) : room.current.local.add(p.id);
+                setHushed([...room.current.local]);
+              },
+            },
+          ]
+        : []),
+      ...(p && !p.agent && onProfile
+        ? [{ label: "View profile", icon: <Users size={14} />, onClick: () => onProfile("person", p.name) }]
+        : p && p.agent && onProfile
+          ? [{ label: "View profile", icon: <Bot size={14} />, onClick: () => onProfile("agent", p.name) }]
+          : []),
+    ]);
+  };
   const pick = (el) =>
     cloneElement(el, {
-      onClick: () => setFocus(el.key === focusKey ? "none" : el.key),
+      onClick: () => {
+        // Clicking focuses that tile on its own; click it again to go back to everyone.
+        if (el.key === focusKey) {
+          setFocus("none");
+          setSolo(false);
+        } else {
+          setFocus(el.key);
+          setSolo(true);
+        }
+      },
+      onContextMenu: tileMenu(el),
+      "data-tile": el.key,
       title: el.key === focusKey ? "Click to show everyone" : "Click to focus",
       className: el.props.className + (el.key === focusKey ? " focused" : " pickable"),
     });
   const layout =
     focusKey && all.length > 1 ? (
       <div className="call-focus-wrap">
-        <div className="call-focus">{pick(all.find((e) => e.key === focusKey))}</div>
-        <div className="call-strip">
-          {all.filter((e) => e.key !== focusKey).map(pick)}
+        <div className="call-focus">
+          {pick(all.find((e) => e.key === focusKey))}
+          <button className="strip-toggle" onClick={() => setSolo(!solo)}>
+            {solo ? `Show others (${all.length - 1})` : "Hide others"}
+          </button>
         </div>
+        {!solo && (
+          <div className="call-strip">
+            {all.filter((e) => e.key !== focusKey).map(pick)}
+          </div>
+        )}
       </div>
     ) : (
       <div className="call-grid">{all.map(pick)}</div>

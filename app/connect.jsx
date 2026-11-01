@@ -209,7 +209,7 @@ export default function Connect({ api, project, projectName, onChanged }) {
           </div>
         </div>
       )}
-      {project && token ? (
+      {project ? (
         <div className="step-card">
           <span className="step-num">3</span>
           <div className="step-body">

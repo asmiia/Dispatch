@@ -1488,6 +1488,8 @@ export default function Workspace() {
           }}
           onLeave={() => setCall(null)}
           agentOf={agentOf}
+          onMenu={showMenu}
+          onProfile={openProfile}
         />
       )}
       <Toasts list={toasts} onClose={closeToast} />
