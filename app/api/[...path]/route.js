@@ -388,7 +388,7 @@ export async function POST(request, { params }) {
       );
     }
     if (route === "coordination")
-      return Response.json(callTool(body.tool, body.args, db));
+      return Response.json(await callTool(body.tool, body.args, db));
     if (route === "settings/team")
       return Response.json(sec.updateTeam(actor, body));
     if (route === "settings/teams")
