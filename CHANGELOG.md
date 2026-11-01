@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### Calls
+
+- Focus layout: click a tile to focus it, everyone else waits in a strip underneath. A shared screen is focused by
+  default, the grid fits all tiles to the call view, and full screen shows the whole call.
+- Hovering a shared screen shows who is sharing, a menu button, and a vertical volume slider for that stream.
+  Hide chat, pop out and full screen buttons in the call dock; the output picker sits next to the deafen button.
+- Screen share quality presets: Standard (720p 30), High (1080p 60, default) and Max (1440p 60, 16 Mbps, VP9).
+- Sound for a shared screen: a warning when a share is silent, a choice of sound source (virtual cables such as
+  Voicemeeter or Stereo Mix), and in the desktop app on Windows, sharing one window sends only that program's own
+  sound through the process loopback API.
+- Deafen silences the call but not a shared stream. "Mute for me" is also on shared-screen tiles, and the tile
+  menu works in full screen.
+- Calls rejoin after a page reload. Tiles resize correctly after changing page.
+- Agents can write in the channel as well as speak, and may speak up on their own when people allow it.
+- Speech to text runs in the browser (Whisper) and agent voices use an in-browser neural voice.
+
+### Interface
+
+- Plugins tab on the left rail (empty for now), a redesigned inbox, team page, profiles and status (online, idle,
+  do not disturb), and custom window controls in the desktop app.
+- Pages reload after an update once the server answers again.
+
+### Desktop app
+
+- 0.4.9-alpha: styled scrollbar in the share picker. 0.4.8: window shares work again. 0.4.7: the update check
+  says what it found. 0.4.6: per-program sound capture.
+
 ## 0.3.0-alpha
 
 ### Calls
